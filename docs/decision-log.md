@@ -98,3 +98,35 @@ The earlier audit findings about browser-local application architecture, absence
 The Project MASTER CURRENT STATE should be updated to record this release-governance and security change and to remove or supersede any statement that says GitHub identity, Vercel linkage, CI, branch protection, or Production deployment SHA are unknown.
 
 It should also continue to state that `leadrescue.online` is not a verified user-owned or attached LeadRescue production domain.
+
+## 2026-08-21 - Keep repository public while on GitHub Free
+
+**Status:** APPROVED CURRENT DECISION
+
+### Decision
+
+Keep `nileshsshirishkar/leadrescue-ai` public while the repository is operated on GitHub Free. Reconsider private visibility before commercial code, proprietary assets, or real client data materially expand, and only after a protection path for a private repository is confirmed.
+
+### Reason
+
+Current GitHub documentation states that repository rulesets are available for public repositories on GitHub Free, while rulesets for private repositories require GitHub Pro, GitHub Team, or GitHub Enterprise Cloud. Protected branches have the same public-Free versus private-paid plan boundary. The current `Protect main` ruleset and required `Verify` workflow are material release controls, so making the repository private now could remove or weaken the protection model unless the GitHub plan is upgraded first.
+
+### Current controls and constraints
+
+- Repository visibility remains public.
+- `Protect main` remains the controlling release ruleset.
+- Pull requests and the `Verify` status check remain required for `main`.
+- No secrets, credentials, private client data, proprietary datasets, or sensitive configuration may be committed to the public repository.
+- Repository visibility must be reviewed again before real client data or materially sensitive commercial code/assets are introduced.
+- A future switch to private should be preceded by verification that the selected GitHub plan supports the required ruleset/protected-branch controls.
+
+### Evidence
+
+- GitHub repository state is currently public.
+- User confirmed the account is on GitHub Free.
+- GitHub official documentation checked 21 August 2026 states that rulesets are available on public repositories with GitHub Free and on public/private repositories with GitHub Pro, Team, or Enterprise Cloud.
+- GitHub official protected-branch documentation checked 21 August 2026 states that protected branches are available on public repositories with GitHub Free and on private repositories with GitHub Pro, Team, Enterprise Cloud, or Enterprise Server.
+
+### Master Current State delta
+
+The Master item asking whether the repository should remain public is now resolved for the current stage: **KEEP PUBLIC WHILE ON GITHUB FREE**. This is a temporary governance decision, not a permanent commitment to public source. Re-open the decision before commercial sensitivity or real client data increases, or when the GitHub plan changes.
