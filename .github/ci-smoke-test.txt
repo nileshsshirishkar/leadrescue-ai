@@ -1,0 +1,1 @@
+CI smoke test. This temporary file exists only to trigger and verify the GitHub Actions pull request workflow.
