@@ -36,13 +36,20 @@ describe("Supabase health route", () => {
   });
 
   it("checks the Supabase Auth health endpoint without exposing credentials", async () => {
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ name: "GoTrue" }), { status: 200 }));
+    let requestedUrl = "";
+    let requestedHeaders: HeadersInit | undefined;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      requestedUrl = String(input);
+      requestedHeaders = init?.headers;
+      return new Response(JSON.stringify({ name: "GoTrue" }), { status: 200 });
+    };
+
     const handler = createSupabaseHealthHandler({
       getConfig: () => ({
         url: "https://example.supabase.co",
         publishableKey: "sb_publishable_test",
       }),
-      fetchImpl: fetchImpl as typeof fetch,
+      fetchImpl,
     });
 
     const response = await handler();
@@ -54,10 +61,8 @@ describe("Supabase health route", () => {
       status: "reachable",
     });
 
-    expect(fetchImpl).toHaveBeenCalledOnce();
-    const [url, init] = fetchImpl.mock.calls[0];
-    expect(String(url)).toBe("https://example.supabase.co/auth/v1/health");
-    expect(init?.headers).toEqual({ apikey: "sb_publishable_test" });
+    expect(requestedUrl).toBe("https://example.supabase.co/auth/v1/health");
+    expect(requestedHeaders).toEqual({ apikey: "sb_publishable_test" });
   });
 
   it("returns 502 when Supabase is unavailable", async () => {
