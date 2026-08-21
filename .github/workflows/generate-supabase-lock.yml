@@ -1,0 +1,33 @@
+name: Generate Supabase Lockfile
+
+on:
+  push:
+    branches:
+      - feat/supabase-app-integration
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Generate lockfile
+        run: npm install --package-lock-only --ignore-scripts @supabase/supabase-js@2.112.3 @supabase/ssr@0.12.4
+
+      - name: Upload lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-lock
+          path: package-lock.json
+          if-no-files-found: error
