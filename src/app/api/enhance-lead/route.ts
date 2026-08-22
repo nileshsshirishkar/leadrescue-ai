@@ -9,6 +9,7 @@ import {
   type EnhancementRequest,
 } from "@/lib/enhancement";
 import { buildEnhancementModelInput } from "@/lib/enhancement-prompt";
+import { hasAuthenticatedUser } from "@/lib/supabase/auth";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,7 @@ interface ModelResult {
 }
 
 export interface EnhanceLeadDependencies {
+  authorizeRequest(): Promise<boolean>;
   getConfig(): RuntimeConfig;
   invokeModel(request: EnhancementRequest, config: ModelConfig): Promise<ModelResult>;
 }
@@ -71,6 +73,7 @@ async function invokeOpenAI(request: EnhancementRequest, config: ModelConfig): P
 }
 
 const defaultDependencies: EnhanceLeadDependencies = {
+  authorizeRequest: hasAuthenticatedUser,
   getConfig: () => ({
     apiKey: process.env.OPENAI_API_KEY,
     model: process.env.OPENAI_MODEL,
@@ -93,6 +96,10 @@ function hasValidDemoAccess(submittedCode: string | null, configuredCode: string
 
 export function createEnhanceLeadHandler(dependencies: EnhanceLeadDependencies = defaultDependencies) {
   return async function POST(request: Request): Promise<Response> {
+    if (!(await dependencies.authorizeRequest())) {
+      return jsonError("Authentication required.", 401);
+    }
+
     const config = dependencies.getConfig();
     if (!hasValidDemoAccess(request.headers.get("x-demo-access-code"), config.demoAccessCode)) {
       return jsonError("Demo access required.", 401);

@@ -4,7 +4,7 @@
 
 LeadRescue AI is an explainable lead-recovery copilot for small service businesses. Deterministic local rules find follow-up leakage, explain record evidence, recommend a next action, and draft a human-reviewed recovery message. Phase 2 adds an optional, explicit, one-lead GPT-5.6 language enhancement without changing deterministic scoring.
 
-Do not add databases, user accounts, identity authentication, deployment configuration, or automatic WhatsApp, email, CRM, Meta, or Zoho integrations. Preserve the lightweight shared demo access-code gate for the paid enhancement route. Do not invent or describe incomplete features as working.
+The approved next-stage foundation now includes Supabase for authentication and tenant-aware persistence work in controlled development. Do not add other databases, identity providers, deployment changes, or automatic WhatsApp, email, CRM, Meta, or Zoho integrations unless a newer approved decision explicitly authorizes them. Preserve the lightweight shared demo access-code gate for the paid enhancement route until it is deliberately replaced. Do not invent or describe incomplete features as working.
 
 ## Technical rules
 
@@ -12,7 +12,8 @@ Do not add databases, user accounts, identity authentication, deployment configu
 - Use `npm.cmd` and `npx.cmd` on Windows. Do not change PowerShell execution policy.
 - Keep all lead analysis deterministic and auditable in `src/lib/scoring.ts`.
 - Validate all imported records before they reach the analysis engine.
-- Use browser storage only for local convenience. Never transmit lead data.
+- Treat browser storage as temporary prototype convenience only. New shared persistence must use the approved Supabase schema and tenant RLS controls, and must be validated away from Production first.
+- Supabase authentication must use the official SSR client pattern, verified user claims for protected server access, and public publishable credentials only in `NEXT_PUBLIC_` variables. Never expose a Supabase secret or service-role key to the browser.
 - Keep `OPENAI_API_KEY` server-only. Never use a `NEXT_PUBLIC_` API key or call OpenAI from a client component.
 - Keep `DEMO_ACCESS_CODE` server-only. Send the user-entered code only in the `x-demo-access-code` request header and compare it before initializing OpenAI.
 - Remember the demo access code only in `sessionStorage`; never put it in `localStorage`, render it after saving, or log it.
@@ -37,6 +38,7 @@ Do not add databases, user accounts, identity authentication, deployment configu
 - Never invent prices, discounts, customer statements, or promised outcomes.
 - Generated messages must be concise, natural, and end with one clear question.
 - Keep all bundled samples fictional using reserved `example.com` email addresses and fictional phone ranges.
+- Do not enable public self-signup until account provisioning, organization membership, role assignment, lifecycle, and recovery behavior are explicitly approved and tested.
 
 ## Quality gate
 
@@ -47,6 +49,6 @@ Before declaring work complete, run:
 3. `npm.cmd test`
 4. `npm.cmd run build`
 
-Add or update focused tests whenever scoring or CSV normalization changes. Report limitations honestly and never claim untested behavior is complete.
+Add or update focused tests whenever scoring, CSV normalization, authentication, authorization, or persistence behavior changes. Report limitations honestly and never claim untested behavior is complete.
 
 All OpenAI-related automated tests must use mocked clients. Never make a real OpenAI request during tests, linting, type checking, builds, or browser verification.

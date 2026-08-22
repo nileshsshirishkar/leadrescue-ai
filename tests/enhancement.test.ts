@@ -66,12 +66,33 @@ function handlerWith(
   },
 ) {
   return createEnhanceLeadHandler({
+    authorizeRequest: async () => true,
     getConfig: () => config,
     invokeModel,
   });
 }
 
 describe("controlled enhancement route", () => {
+  it("rejects an unauthenticated request before reading AI configuration or invoking the model", async () => {
+    const authorizeRequest = vi.fn(async () => false);
+    const getConfig = vi.fn(() => ({
+      apiKey: "test-key-never-sent",
+      model: "gpt-5.6",
+      demoAccessCode: "correct-demo-code",
+    }));
+    const invokeModel = vi.fn();
+    const handler = createEnhanceLeadHandler({ authorizeRequest, getConfig, invokeModel });
+    const payload = createEnhancementRequest(sampleAnalysis("DEMO-004"));
+
+    const response = await handler(apiRequest(payload));
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "Authentication required." });
+    expect(authorizeRequest).toHaveBeenCalledTimes(1);
+    expect(getConfig).not.toHaveBeenCalled();
+    expect(invokeModel).not.toHaveBeenCalled();
+  });
+
   it("rejects a missing demo access code before invoking the mocked model", async () => {
     const invokeModel = vi.fn();
     const payload = createEnhancementRequest(sampleAnalysis("DEMO-004"));
@@ -92,7 +113,7 @@ describe("controlled enhancement route", () => {
     expect(invokeModel).not.toHaveBeenCalled();
   });
 
-  it("accepts the correct demo access code and calls only the mocked model", async () => {
+  it("accepts authenticated access with the correct demo code and calls only the mocked model", async () => {
     const invokeModel = vi.fn(async () => validResponse);
     const payload = createEnhancementRequest(sampleAnalysis("DEMO-004"));
     const response = await handlerWith(invokeModel)(apiRequest(payload));
@@ -109,7 +130,11 @@ describe("controlled enhancement route", () => {
       model: "gpt-5.6",
       demoAccessCode: "correct-demo-code",
     }));
-    const handler = createEnhanceLeadHandler({ getConfig, invokeModel });
+    const handler = createEnhanceLeadHandler({
+      authorizeRequest: async () => true,
+      getConfig,
+      invokeModel,
+    });
     const payload = createEnhancementRequest(sampleAnalysis("DEMO-004"));
 
     const missingResponse = await handler(apiRequest(payload, null));
