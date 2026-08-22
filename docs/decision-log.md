@@ -4,7 +4,7 @@ This file records implemented or explicitly approved decisions that materially a
 
 ## 2026-08-22 - Supabase Dev foundation and controlled authentication slice
 
-**Status:** IN PROGRESS. Database and tenant-RLS foundation are VERIFIED IN DEV. Authentication code is IMPLEMENTED ON DRAFT PR #10 and has passed repository CI. Preview runtime configuration and end-to-end authentication remain REQUIRES VERIFICATION.
+**Status:** IMPLEMENTED AND VERIFIED IN PREVIEW for the controlled sign-in slice. Database and tenant-RLS foundation are VERIFIED IN DEV. Production authentication and Production persistence remain NOT IMPLEMENTED.
 
 ### Decision
 
@@ -21,22 +21,38 @@ The first authentication slice is sign-in only. Public self-signup stays disable
 - Supabase Security Advisors returned no security lints at the latest check.
 - PR #8 versioned the hosted Dev schema and tenant-isolation tests into the repository.
 - PR #9 added local Supabase database testing to CI and merged into `develop`.
-- Hosted Dev Auth user count was `0` at the latest direct check, so login has not yet been validated with a real test account.
+- One controlled confirmed non-production Auth user now exists with a `LeadRescue QA` organization, profile, and owner membership.
 
-### Authentication implementation on draft PR #10
+### Authentication implementation and Preview validation on PR #10
 
 - Uses official `@supabase/ssr` and `@supabase/supabase-js` packages.
 - Uses public Supabase URL and publishable-key environment variables only for browser-safe configuration.
 - Adds fail-closed configuration handling plus browser and server Supabase clients.
 - Adds request-level session refresh through Next.js Proxy.
 - Uses `supabase.auth.getClaims()` for protected server access.
+- Applies Supabase-provided cache headers when refreshed authentication cookies are written by the Proxy.
 - Adds password sign-in, protected workspace routing, and server-side sign-out.
 - Keeps public self-signup disabled.
 - Requires an authenticated Supabase user before `/api/enhance-lead` reads AI configuration or invokes the model.
 - Keeps the existing demo access-code check as an additional AI cost-control layer after authentication.
 - Adds focused authentication/configuration tests and an unauthenticated API rejection test.
-- GitHub Actions CI run #37 passed on implementation commit `557e6b71eb25ef5b2ce9d4babbce7ef1635ca72c`.
-- Vercel has created Ready Preview deployments for the draft PR, but Supabase Preview environment configuration and runtime auth behavior are not yet established.
+- Preview Supabase environment configuration is active.
+- Correct email/password sign-in passed in Preview.
+- Wrong-password rejection passed and leaves the user on `/login`.
+- Protected workspace access passed.
+- Authenticated session survived browser refresh before and after the cache-header correction.
+- Server-side sign-out passed and signed-out workspace access returned to `/login`.
+- Tenant RLS isolation probe allowed the controlled user to see only its organization.
+- Unauthenticated `/api/enhance-lead` returned `401 Authentication required.`.
+- Authenticated `/api/enhance-lead` without the demo code returned `401 Demo access required.`.
+- Authenticated `/api/enhance-lead` with the valid demo code returned `200` with a schema-valid GPT-5.6 enhancement.
+- GitHub Actions CI run #39 passed on commit `e50f2354bbd6f32de29e47ab392ecd80771be85c` after the Supabase cache-header correction.
+- Matching Vercel Preview deployment was READY and the unauthenticated response carried private/no-store cache controls.
+
+### Remaining validation boundary
+
+- An actually expired access token has not been deliberately forced in Preview, so refresh-token rotation is not separately claimed as runtime-proven.
+- This does not block merge into `develop`, but it remains a required explicit validation item before Production promotion.
 
 ### Deliberately unchanged
 
@@ -46,18 +62,13 @@ The first authentication slice is sign-in only. Public self-signup stays disable
 - No automatic organization provisioning or public customer onboarding exists.
 - No Meta, Google, WhatsApp, voice, billing, booking, CRM, or other provider integration is added by this change.
 
-### Required validation before promotion
+### Promotion decision
 
-1. Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the Vercel Preview environment without committing values to Git.
-2. Create one controlled non-production Auth user through a supported Supabase Auth path.
-3. Create that user's profile and organization membership through an approved provisioning path.
-4. Verify sign-in, sign-out, expired-session refresh, unauthenticated redirects, and authenticated `/api/enhance-lead` behavior on Preview.
-5. Verify tenant RLS allows the test user to access only its organization data.
-6. Keep PR #10 draft until Preview checks pass and the change is approved for merge to `develop`.
+The controlled authentication slice is eligible for merge into `develop` after the current documentation-only commit passes CI. Do not merge this work to `main` or configure Production Supabase authentication as part of this milestone.
 
 ### Master Current State delta
 
-The Master statement that Supabase is only proposed is superseded for the controlled Dev foundation. Supabase is implemented and verified in Dev at the database/RLS layer, and application authentication is in controlled draft integration. Production authentication, Production persistence, operational tenancy, and client-ready SaaS maturity remain NOT ESTABLISHED.
+The Master should now classify Supabase authentication as IMPLEMENTED AND VERIFIED IN PREVIEW for the controlled sign-in slice, with the database/RLS foundation VERIFIED IN DEV. Production authentication, Production persistence, operational multi-tenant application reads/writes, customer onboarding, and client-ready SaaS maturity remain NOT ESTABLISHED.
 
 ## 2026-08-21 - Security baseline and release governance
 
