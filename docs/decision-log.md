@@ -2,9 +2,68 @@
 
 This file records implemented or explicitly approved decisions that materially affect release, security, architecture, or commercial readiness. It does not replace the Project MASTER CURRENT STATE.
 
+## 2026-08-23 - Read-only tenant-scoped lead retrieval
+
+**Status:** IMPLEMENTED AND VERIFIED IN PREVIEW on PR #12. Application lead writes, browser persistence migration, and Production persistence remain NOT IMPLEMENTED.
+
+### Decision
+
+Add the next Supabase persistence slice as read-only tenant-scoped lead retrieval. Reuse the verified fail-closed organization context, keep RLS as the database authorization boundary, and also apply an explicit `organization_id` filter in the application query.
+
+Do not add writes or migrate the existing browser-local workspace until tenant-scoped reads have been independently proven in Preview.
+
+### Implementation
+
+- Added a server-side tenant lead reader using the existing authenticated organization-context resolver.
+- Queries `public.leads` with an explicit `organization_id` equality filter.
+- Selects only approved lead columns rather than `select *`.
+- Includes `source_external_id` so controlled fixtures can be positively identified during validation.
+- Limits results to 100 rows and orders deterministically by creation time.
+- Validates returned rows with Zod.
+- Performs a second fail-closed application check that rejects any returned row whose `organization_id` differs from the resolved tenant.
+- Added read-only `GET /api/leads` with `Cache-Control: private, no-store`.
+- No database migration, contact write, lead write, event write, task write, or localStorage migration is included.
+
+### Controlled Dev fixture
+
+- Added one fictional non-production contact and one fictional lead inside the existing `LeadRescue QA` Dev organization solely for Preview validation.
+- Lead fixture source external id: `qa-preview-read-001`.
+- No real customer or client data was used.
+
+### Verification
+
+- GitHub Actions CI run #45 passed the initial implementation with `Verify` and `Database Tests` successful.
+- After tightening the acceptance criterion to return and validate `source_external_id`, GitHub Actions CI run #47 passed `Verify`, including install, lint, typecheck, tests, and build.
+- CI run #47 also passed `Database Tests`, including local Supabase startup and pgTAP tenant tests.
+- Exact Vercel Preview deployment `dpl_9ofo6ArYTE54TdSZ2HkbAppVcymL` was READY on PR #12 head `6dd93142b6f2ba850c072d87f549f60f96eb6be1` before this documentation update.
+- Signed-out Preview request to `/api/leads` returned `401 Authentication required.` with private/no-store caching.
+- Signed-in controlled user request returned HTTP 200 with exactly one lead for organization `LeadRescue QA`.
+- The returned lead positively identified the intended fictional fixture with `source_external_id = qa-preview-read-001`.
+- The returned lead showed the expected `Follow-up needed` status and `Annual maintenance plan` service interest.
+- The endpoint did not return contact email or phone data.
+- Vercel runtime logs independently recorded `GET /api/leads` as HTTP 200 on deployment `dpl_9ofo6ArYTE54TdSZ2HkbAppVcymL`.
+- A controlled Supabase transaction temporarily created an unrelated organization, contact, and lead, simulated the authenticated controlled user, and confirmed RLS exposed only the `LeadRescue QA` fixture lead. The transaction was rolled back.
+- Focused unit tests cover authenticated reads, empty tenants, unauthenticated and ambiguous context, malformed rows, cross-tenant row rejection, and database failure.
+
+### Safety boundary
+
+- RLS remains the database security boundary. Explicit application filtering and returned-row validation are additional defense and performance controls.
+- Browser-local workspace persistence remains unchanged.
+- No Supabase lead writes are implemented in the application.
+- Production Supabase authentication and Production persistence remain unimplemented.
+- No public signup, automatic organization provisioning, multi-organization selector, customer onboarding, Meta/Google ingestion, CRM sync, WhatsApp, voice, billing, booking, or other provider integration is introduced.
+
+### Promotion decision
+
+PR #12 is eligible for merge into `develop` after this documentation-update commit passes CI. Do not merge this milestone to `main` or make Production Supabase changes.
+
+### Master Current State delta
+
+After PR #12 merges, the Master should classify read-only authenticated tenant-scoped lead retrieval as IMPLEMENTED AND VERIFIED IN PREVIEW / DEVELOP. Supabase-backed lead writes, contact/task persistence through the application, browser localStorage migration, Production authentication, Production database usage, multi-organization selection, and customer-ready multi-tenant operation remain NOT ESTABLISHED.
+
 ## 2026-08-22 - Read-only tenant organization context
 
-**Status:** IMPLEMENTED AND VERIFIED IN PREVIEW on PR #11. Production persistence and application lead reads/writes remain NOT IMPLEMENTED.
+**Status:** IMPLEMENTED AND VERIFIED IN PREVIEW and merged into `develop` on PR #11. Production persistence and application lead writes remain NOT IMPLEMENTED.
 
 ### Decision
 
@@ -29,12 +88,13 @@ Do not silently choose an organization when a user belongs to more than one orga
 
 - GitHub Actions CI run #42 passed `Verify`, including install, lint, typecheck, tests, and build.
 - CI run #42 passed `Database Tests`, including local Supabase startup and pgTAP tenant tests.
-- Vercel Preview deployment `dpl_2YSvKeCXujRmRU2beTgxnuRv58df` was READY on PR #11 head `2326eb27c8537a20f41b47e8bf54e52af2d4239b` before this documentation update.
+- Vercel Preview deployment `dpl_2YSvKeCXujRmRU2beTgxnuRv58df` was READY on PR #11 head `2326eb27c8537a20f41b47e8bf54e52af2d4239b` before its documentation update.
 - Signed-out Preview request to `/api/organization-context` returned `401 Authentication required.` with private/no-store caching.
 - Signed-in controlled user request returned HTTP 200 and only the `LeadRescue QA` organization with slug `leadrescue-qa` and role `owner`.
 - Vercel runtime logs independently recorded the authenticated `/api/organization-context` request as HTTP 200 on the PR #11 Preview deployment.
 - A controlled transaction created an unrelated temporary organization, simulated the authenticated controlled user, and confirmed RLS exposed only `LeadRescue QA` plus that user's single owner membership. The transaction was rolled back.
 - Focused resolver tests cover unauthenticated access, no membership, multiple memberships, malformed rows, missing organization lookup, and dependency/database failure.
+- PR #11 passed final CI and merged into `develop` as merge commit `1ef0015365477a3539efe82908ea7ed2a0bf4b17`.
 
 ### Safety boundary
 
@@ -45,11 +105,11 @@ Do not silently choose an organization when a user belongs to more than one orga
 
 ### Promotion decision
 
-PR #11 is eligible for merge into `develop` after the documentation-update commit passes CI. Do not merge this milestone to `main` or make Production Supabase changes.
+The read-only tenant organization-context slice was merged into `develop` only. Do not merge it to `main` or make Production Supabase changes without a separate approved Production promotion.
 
 ### Master Current State delta
 
-The Master should classify authenticated tenant organization-context resolution as IMPLEMENTED AND VERIFIED IN PREVIEW / DEVELOP once PR #11 merges. Supabase-backed lead/contact/task persistence, Production authentication, Production database usage, multi-organization selection, and customer-ready multi-tenant application operation remain NOT ESTABLISHED.
+Authenticated tenant organization-context resolution is IMPLEMENTED AND VERIFIED IN PREVIEW and merged into `develop`. Supabase-backed lead/contact/task writes, Production authentication, Production database usage, multi-organization selection, and customer-ready multi-tenant application operation remain NOT ESTABLISHED.
 
 ## 2026-08-22 - Supabase Dev foundation and controlled authentication slice
 
