@@ -14,6 +14,7 @@ const lead = {
   business_type: "Home services",
   service_interest: "Annual maintenance plan",
   source: "manual",
+  source_external_id: "qa-preview-read-001",
   status: "Follow-up needed",
   enquiry_text: "Fictional QA lead asking about annual maintenance plan availability.",
   last_contact_at: "2026-08-19T00:00:00.000Z",
