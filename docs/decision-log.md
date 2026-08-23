@@ -2,6 +2,51 @@
 
 This file records implemented or explicitly approved decisions that materially affect release, security, architecture, or commercial readiness. It does not replace the Project MASTER CURRENT STATE.
 
+## 2026-08-23 - Lead write idempotency foundation
+
+**Status:** IMPLEMENTED AND VERIFIED IN HOSTED DEV for the database prerequisite. Application lead/contact/event writes remain NOT IMPLEMENTED.
+
+### Decision
+
+Use `(organization_id, source, source_external_id)` as the idempotency key for future imported/provider-originated lead persistence. Keep manual/null external-id records compatible, but require imported external ids to be trimmed and non-empty. A retry must resolve to the existing lead without overwriting later human edits.
+
+### Implementation
+
+- Added a unique constraint on `(organization_id, source, source_external_id)`.
+- Added database checks requiring `source` to be trimmed and non-empty.
+- Added database checks requiring non-null `source_external_id` to be trimmed and non-empty.
+- Added pgTAP coverage for same-tenant duplicate rejection, cross-tenant independence, null/manual compatibility, and malformed source-key rejection.
+- Added `docs/supabase-write-contract.md` defining the future atomic contact + lead + audit-event persistence contract, retry semantics, tenant enforcement, rollback requirements, and validation gates.
+- No application write endpoint or RPC function is included in this milestone.
+
+### Verification
+
+- Hosted Dev data was checked before migration. The controlled database had one fictional lead with a valid external id, no blank source/external-id values, and no duplicate source-key combination.
+- CI run #52 passed the initial migration with `Verify` and `Database Tests` successful.
+- The migration was applied to hosted `LeadRescue AI Dev` only.
+- Hosted migration history now includes `20260823083811_add_lead_source_idempotency_constraints`.
+- Hosted Dev was directly checked and contains `leads_org_source_external_unique`, `leads_source_nonempty_trimmed`, and `leads_source_external_id_nonempty_trimmed`.
+- The repository migration filename was aligned to the exact hosted migration version.
+- CI run #54 passed the corrected migration history with lint, typecheck, tests, build, local Supabase startup, and pgTAP database tests successful.
+
+### Safety boundary
+
+- RLS remains enabled and continues to be the database authorization boundary.
+- Ordinary future application writes must use the authenticated user session. Service-role bypass is not approved for normal lead persistence.
+- The client must not supply an authoritative organization id or actor id.
+- Email and phone are not approved as automatic contact-deduplication keys.
+- Browser-local workspace persistence remains unchanged.
+- Production database/schema remains unchanged.
+- No public signup, provider ingestion, CRM sync, WhatsApp, voice, booking, billing, or other integration is introduced.
+
+### Promotion decision
+
+PR #13 is eligible for merge into `develop` after this Decision Log update passes CI. Do not merge this database prerequisite to `main` as part of this milestone. The next implementation milestone may add a narrowly scoped atomic PostgreSQL function using `SECURITY INVOKER`, but only on a new controlled branch with dedicated rollback, concurrency, RLS, and retry tests before any application write endpoint is exposed.
+
+### Master Current State delta
+
+After PR #13 merges, classify lead-source idempotency constraints as IMPLEMENTED AND VERIFIED IN HOSTED DEV / DEVELOP. Application lead/contact/event writes, atomic persistence RPC, localStorage migration, Production persistence, and customer-ready ingestion remain NOT ESTABLISHED.
+
 ## 2026-08-23 - Read-only tenant-scoped lead retrieval
 
 **Status:** IMPLEMENTED AND VERIFIED IN PREVIEW on PR #12. Application lead writes, browser persistence migration, and Production persistence remain NOT IMPLEMENTED.
