@@ -10,6 +10,7 @@ const tenantLeadRowSchema = z
     business_type: z.string(),
     service_interest: z.string(),
     source: z.string(),
+    source_external_id: z.string().nullable(),
     status: z.string(),
     enquiry_text: z.string(),
     last_contact_at: z.string().nullable(),
@@ -47,7 +48,7 @@ async function createDefaultDependencies(): Promise<TenantLeadReadDependencies> 
       const { data, error } = await supabase
         .from("leads")
         .select(
-          "id, organization_id, contact_id, business_type, service_interest, source, status, enquiry_text, last_contact_at, follow_up_count, appointment_status, quoted_price, quoted_currency, budget_signal, notes, created_at, updated_at",
+          "id, organization_id, contact_id, business_type, service_interest, source, source_external_id, status, enquiry_text, last_contact_at, follow_up_count, appointment_status, quoted_price, quoted_currency, budget_signal, notes, created_at, updated_at",
         )
         .eq("organization_id", organizationId)
         .order("created_at", { ascending: false })
