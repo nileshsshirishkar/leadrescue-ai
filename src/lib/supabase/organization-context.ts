@@ -25,9 +25,16 @@ export interface OrganizationContext {
   role: OrganizationRole;
 }
 
-export type OrganizationContextResult =
+export type OrganizationAccessContextResult =
   | { status: "ok"; context: OrganizationContext }
   | { status: "paused"; context: OrganizationContext }
+  | { status: "unauthenticated" }
+  | { status: "missing-membership" }
+  | { status: "ambiguous-membership" }
+  | { status: "unavailable" };
+
+export type OrganizationContextResult =
+  | { status: "ok"; context: OrganizationContext }
   | { status: "unauthenticated" }
   | { status: "missing-membership" }
   | { status: "ambiguous-membership" }
@@ -75,9 +82,9 @@ async function createDefaultDependencies(): Promise<OrganizationContextDependenc
   };
 }
 
-export async function resolveOrganizationContext(
+export async function resolveOrganizationAccessContext(
   dependencies?: OrganizationContextDependencies,
-): Promise<OrganizationContextResult> {
+): Promise<OrganizationAccessContextResult> {
   try {
     const effectiveDependencies = dependencies ?? (await createDefaultDependencies());
     const userId = await effectiveDependencies.getAuthenticatedUserId();
@@ -116,4 +123,12 @@ export async function resolveOrganizationContext(
   } catch {
     return { status: "unavailable" };
   }
+}
+
+export async function resolveOrganizationContext(
+  dependencies?: OrganizationContextDependencies,
+): Promise<OrganizationContextResult> {
+  const result = await resolveOrganizationAccessContext(dependencies);
+  if (result.status === "paused") return { status: "missing-membership" };
+  return result;
 }
