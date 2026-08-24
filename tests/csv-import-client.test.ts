@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { CsvImportRequestError, importCsvRows } from "@/lib/csv-import-client";
+import {
+  CsvImportRequestError,
+  clearPendingImportId,
+  getOrCreatePendingImportId,
+  importCsvRows,
+} from "@/lib/csv-import-client";
 import type { Lead } from "@/lib/types";
 
 function lead(index: number): Lead {
@@ -40,7 +45,16 @@ function okResponse(importId: string, rows: Array<{ rowNumber: number }>) {
   });
 }
 
-describe("importCsvRows", () => {
+function memoryStorage() {
+  const data = new Map<string, string>();
+  return {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => { data.set(key, value); },
+    removeItem: (key: string) => { data.delete(key); },
+  };
+}
+
+describe("CSV import client", () => {
   it("sends normalized leads to the authenticated CSV endpoint", async () => {
     const importId = "7e3d9f4b-2875-4e9d-a2bd-4ad5c2a6c181";
     const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
@@ -50,16 +64,17 @@ describe("importCsvRows", () => {
 
     const result = await importCsvRows([
       { rowNumber: 2, lead: lead(1) },
-      { rowNumber: 3, lead: lead(2) },
+      { rowNumber: 4, lead: lead(2) },
     ], { importId, fetchImpl: fetchImpl as typeof fetch });
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl.mock.calls[0][0]).toBe("/api/imports/csv");
-    expect(JSON.parse(String(fetchImpl.mock.calls[0][1]?.body))).toMatchObject({
+    const request = JSON.parse(String(fetchImpl.mock.calls[0][1]?.body));
+    expect(request).toMatchObject({
       importId,
       rows: [
         { rowNumber: 2, lead: { name: "Fictional Lead 1", source: "manual_csv" } },
-        { rowNumber: 3, lead: { name: "Fictional Lead 2", source: "manual_csv" } },
+        { rowNumber: 4, lead: { name: "Fictional Lead 2", source: "manual_csv" } },
       ],
     });
     expect(result.created).toBe(1);
@@ -91,21 +106,38 @@ describe("importCsvRows", () => {
     expect(result.rows).toHaveLength(205);
   });
 
+  it("reuses a pending import id for the same CSV fingerprint until success clears it", () => {
+    const storage = memoryStorage();
+    const firstId = "7e3d9f4b-2875-4e9d-a2bd-4ad5c2a6c181";
+    const secondId = "6e40c601-2ca2-4f87-82cb-9e6df92ff9ab";
+    const createId = vi.fn()
+      .mockReturnValueOnce(firstId)
+      .mockReturnValueOnce(secondId);
+
+    expect(getOrCreatePendingImportId(storage, "same-file", createId)).toBe(firstId);
+    expect(getOrCreatePendingImportId(storage, "same-file", createId)).toBe(firstId);
+    expect(createId).toHaveBeenCalledTimes(1);
+
+    clearPendingImportId(storage, "same-file");
+    expect(getOrCreatePendingImportId(storage, "same-file", createId)).toBe(secondId);
+  });
+
   it("surfaces sanitized endpoint failures without continuing later batches", async () => {
     const fetchImpl = vi.fn(async () => new Response(
       JSON.stringify({ ok: false, error: "Authentication required." }),
       { status: 401, headers: { "Content-Type": "application/json" } },
     ));
 
-    await expect(importCsvRows([
-      { rowNumber: 2, lead: lead(1) },
-    ], {
-      importId: "7e3d9f4b-2875-4e9d-a2bd-4ad5c2a6c181",
-      fetchImpl: fetchImpl as typeof fetch,
-    })).rejects.toEqual(expect.objectContaining<CsvImportRequestError>({
-      status: 401,
-      message: "Authentication required.",
-    }));
+    try {
+      await importCsvRows([{ rowNumber: 2, lead: lead(1) }], {
+        importId: "7e3d9f4b-2875-4e9d-a2bd-4ad5c2a6c181",
+        fetchImpl: fetchImpl as typeof fetch,
+      });
+      throw new Error("Expected importCsvRows to reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(CsvImportRequestError);
+      expect(error).toMatchObject({ status: 401, message: "Authentication required." });
+    }
   });
 
   it("fails closed on malformed success responses", async () => {
@@ -114,14 +146,15 @@ describe("importCsvRows", () => {
       headers: { "Content-Type": "application/json" },
     }));
 
-    await expect(importCsvRows([
-      { rowNumber: 2, lead: lead(1) },
-    ], {
-      importId: "7e3d9f4b-2875-4e9d-a2bd-4ad5c2a6c181",
-      fetchImpl: fetchImpl as typeof fetch,
-    })).rejects.toEqual(expect.objectContaining<CsvImportRequestError>({
-      status: 502,
-      message: "CSV import returned an invalid response.",
-    }));
+    try {
+      await importCsvRows([{ rowNumber: 2, lead: lead(1) }], {
+        importId: "7e3d9f4b-2875-4e9d-a2bd-4ad5c2a6c181",
+        fetchImpl: fetchImpl as typeof fetch,
+      });
+      throw new Error("Expected importCsvRows to reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(CsvImportRequestError);
+      expect(error).toMatchObject({ status: 502, message: "CSV import returned an invalid response." });
+    }
   });
 });
