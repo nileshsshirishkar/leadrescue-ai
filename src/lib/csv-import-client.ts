@@ -1,3 +1,4 @@
+import { getCsvSourceRowNumber } from "@/lib/csv";
 import type { Lead } from "@/lib/types";
 
 const CSV_IMPORT_BATCH_SIZE = 100;
@@ -11,6 +12,7 @@ export interface CsvImportClientRow {
 
 export interface CsvImportClientRowResult {
   rowNumber: number;
+  sourceRowNumber?: number;
   status: "created" | "existing" | "error";
   leadId?: string;
 }
@@ -27,7 +29,11 @@ interface CsvImportApiResponse {
   ok: true;
   status: "ok";
   importId: string;
-  rows: CsvImportClientRowResult[];
+  rows: Array<{
+    rowNumber: number;
+    status: "created" | "existing" | "error";
+    leadId?: string;
+  }>;
   created: number;
   existing: number;
   errors: number;
@@ -117,8 +123,15 @@ function defaultSessionStorage(): StorageLike | undefined {
   }
 }
 
+function effectiveSourceRow(row: CsvImportClientRow): number {
+  return getCsvSourceRowNumber(row.lead) ?? row.rowNumber;
+}
+
 async function fingerprintImportRows(rows: CsvImportClientRow[]): Promise<string> {
-  return createCsvFingerprint(JSON.stringify(rows.map(({ rowNumber, lead }) => ({ rowNumber, lead }))));
+  return createCsvFingerprint(JSON.stringify(rows.map((row) => ({
+    rowNumber: effectiveSourceRow(row),
+    lead: row.lead,
+  }))));
 }
 
 export async function importCsvRows(
@@ -145,13 +158,18 @@ export async function importCsvRows(
 
   for (let start = 0; start < rows.length; start += CSV_IMPORT_BATCH_SIZE) {
     const batch = rows.slice(start, start + CSV_IMPORT_BATCH_SIZE);
+    const requestRows = batch.map((row) => ({
+      clientRowNumber: row.rowNumber,
+      sourceRowNumber: effectiveSourceRow(row),
+      lead: row.lead,
+    }));
     const response = await fetchImpl("/api/imports/csv", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         importId,
-        rows: batch.map(({ rowNumber, lead }) => ({
-          rowNumber,
+        rows: requestRows.map(({ sourceRowNumber, lead }) => ({
+          rowNumber: sourceRowNumber,
           lead: {
             name: lead.name,
             businessType: lead.businessType,
@@ -181,7 +199,19 @@ export async function importCsvRows(
       throw new CsvImportRequestError("CSV import returned an invalid response.", 502);
     }
 
-    results.push(...body.rows);
+    const mappedRows = body.rows.map((row, index): CsvImportClientRowResult => {
+      const expected = requestRows[index];
+      if (!expected || row.rowNumber !== expected.sourceRowNumber) {
+        throw new CsvImportRequestError("CSV import returned an invalid row response.", 502);
+      }
+      return {
+        rowNumber: expected.clientRowNumber,
+        sourceRowNumber: expected.sourceRowNumber,
+        status: row.status,
+        leadId: row.leadId,
+      };
+    });
+    results.push(...mappedRows);
   }
 
   const output: CsvImportClientResult = {
