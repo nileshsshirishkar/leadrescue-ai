@@ -33,8 +33,8 @@ begin
     raise exception using errcode = '42501', message = 'Authentication required';
   end if;
 
-  select count(*)::integer, min(om.organization_id)
-  into v_membership_count, v_organization_id
+  select count(*)::integer
+  into v_membership_count
   from public.organization_members om
   where om.user_id = v_user_id;
 
@@ -45,6 +45,11 @@ begin
   if v_membership_count <> 1 then
     raise exception using errcode = 'P0001', message = 'Organization selection required';
   end if;
+
+  select om.organization_id
+  into v_organization_id
+  from public.organization_members om
+  where om.user_id = v_user_id;
 
   if p_full_name is null or length(btrim(p_full_name)) = 0 then
     raise exception using errcode = '22023', message = 'Lead name is required';
