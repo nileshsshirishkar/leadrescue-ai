@@ -53,6 +53,8 @@ export function CsvUploadFeedback() {
   const [feedback, setFeedback] = useState<UploadFeedback | null>(null);
   const [inlineErrorRegion, setInlineErrorRegion] = useState<HTMLElement | null>(null);
   const lastObservedKeyRef = useRef<string | null>(null);
+  const currentInlineErrorKeyRef = useRef<string | null>(null);
+  const dismissedInlineErrorKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const syncFeedback = () => {
@@ -62,13 +64,29 @@ export function CsvUploadFeedback() {
 
       if (!nextKey) {
         lastObservedKeyRef.current = null;
+        currentInlineErrorKeyRef.current = null;
+        dismissedInlineErrorKeyRef.current = null;
         setInlineErrorRegion(null);
+        if (region?.hidden) region.hidden = false;
         return;
       }
 
-      if (region?.hidden) region.hidden = false;
-      if (region) region.style.position = "relative";
-      setInlineErrorRegion(next?.kind === "error" ? region : null);
+      if (next?.kind === "error" && region) {
+        currentInlineErrorKeyRef.current = nextKey;
+        region.style.position = "relative";
+
+        if (dismissedInlineErrorKeyRef.current === nextKey) {
+          setInlineErrorRegion(null);
+        } else {
+          if (region.hidden) region.hidden = false;
+          setInlineErrorRegion(region);
+        }
+      } else {
+        currentInlineErrorKeyRef.current = null;
+        dismissedInlineErrorKeyRef.current = null;
+        setInlineErrorRegion(null);
+        if (region?.hidden) region.hidden = false;
+      }
 
       if (nextKey === lastObservedKeyRef.current) return;
 
@@ -92,6 +110,7 @@ export function CsvUploadFeedback() {
 
   function dismissInlineError() {
     if (!inlineErrorRegion) return;
+    dismissedInlineErrorKeyRef.current = currentInlineErrorKeyRef.current;
     inlineErrorRegion.hidden = true;
     setInlineErrorRegion(null);
   }
