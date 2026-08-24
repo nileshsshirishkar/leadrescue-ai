@@ -1,4 +1,4 @@
-import { resolveOrganizationContext } from "@/lib/supabase/organization-context";
+import { resolveOrganizationAccessContext } from "@/lib/supabase/organization-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ function jsonResponse(body: Record<string, unknown>, status: number): Response {
 }
 
 export async function GET(): Promise<Response> {
-  const result = await resolveOrganizationContext();
+  const result = await resolveOrganizationAccessContext();
 
   switch (result.status) {
     case "ok":
@@ -25,6 +25,8 @@ export async function GET(): Promise<Response> {
         },
         200,
       );
+    case "paused":
+      return jsonResponse({ ok: false, error: "Organization access is paused." }, 403);
     case "unauthenticated":
       return jsonResponse({ ok: false, error: "Authentication required." }, 401);
     case "missing-membership":
