@@ -28,6 +28,7 @@ declare
   v_membership_count integer;
   v_contact_id uuid;
   v_lead_id uuid;
+  v_constraint_name text;
 begin
   if v_user_id is null then
     raise exception using errcode = '42501', message = 'Authentication required';
@@ -64,6 +65,17 @@ begin
     or length(p_source_external_id) = 0 then
     raise exception using errcode = '22023', message = 'External source id must be trimmed and non-empty';
   end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      v_organization_id::text
+        || pg_catalog.chr(31)
+        || p_source
+        || pg_catalog.chr(31)
+        || p_source_external_id,
+      0
+    )
+  );
 
   select l.id
   into v_lead_id
@@ -155,6 +167,12 @@ begin
     return;
   exception
     when unique_violation then
+      get stacked diagnostics v_constraint_name = constraint_name;
+
+      if v_constraint_name is distinct from 'leads_org_source_external_unique' then
+        raise;
+      end if;
+
       select l.id
       into v_lead_id
       from public.leads l
