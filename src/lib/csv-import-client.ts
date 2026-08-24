@@ -1,6 +1,8 @@
 import type { Lead } from "@/lib/types";
 
 const CSV_IMPORT_BATCH_SIZE = 100;
+const PENDING_IMPORT_PREFIX = "leadrescue-csv-import:";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface CsvImportClientRow {
   rowNumber: number;
@@ -29,6 +31,12 @@ interface CsvImportApiResponse {
   created: number;
   existing: number;
   errors: number;
+}
+
+interface StorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
 }
 
 export class CsvImportRequestError extends Error {
@@ -63,11 +71,42 @@ async function readErrorMessage(response: Response): Promise<string> {
   return "CSV import could not be completed.";
 }
 
-function createImportId(): string {
+export function createImportId(): string {
   if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
     throw new Error("This browser cannot create a secure import identifier.");
   }
   return crypto.randomUUID();
+}
+
+export async function createCsvFingerprint(csvText: string): Promise<string> {
+  if (typeof crypto === "undefined" || !crypto.subtle) {
+    throw new Error("This browser cannot create a CSV retry fingerprint.");
+  }
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(csvText));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function pendingImportKey(fingerprint: string): string {
+  return `${PENDING_IMPORT_PREFIX}${fingerprint}`;
+}
+
+export function getOrCreatePendingImportId(
+  storage: StorageLike,
+  fingerprint: string,
+  createId: () => string = createImportId,
+): string {
+  const key = pendingImportKey(fingerprint);
+  const existing = storage.getItem(key);
+  if (existing && UUID_PATTERN.test(existing)) return existing;
+
+  const importId = createId();
+  if (!UUID_PATTERN.test(importId)) throw new Error("Could not create a valid CSV import identifier.");
+  storage.setItem(key, importId);
+  return importId;
+}
+
+export function clearPendingImportId(storage: StorageLike, fingerprint: string): void {
+  storage.removeItem(pendingImportKey(fingerprint));
 }
 
 export async function importCsvRows(
