@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { FollowUpReminders } from "@/components/follow-up-reminders";
 import { LeadRescueApp } from "@/components/lead-rescue-app";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
@@ -21,6 +22,11 @@ export default async function Home() {
         </button>
       </form>
       <LeadRescueApp />
+      <div className="bg-[#f5f8fc] px-4 pb-10 lg:pl-[260px] lg:pr-6">
+        <div className="mx-auto max-w-[1600px]">
+          <FollowUpReminders />
+        </div>
+      </div>
     </>
   );
 }
