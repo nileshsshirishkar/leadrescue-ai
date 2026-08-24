@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(16);
+select extensions.plan(17);
 
 insert into auth.users (id, aud, role, email, created_at, updated_at, is_sso_user, is_anonymous)
 values
@@ -189,11 +189,12 @@ select extensions.results_eq(
   'Cross-tenant lead update reveals no row'
 );
 
+reset role;
+
 select extensions.results_eq(
   $$select status from public.leads where id = '70000000-0000-0000-0000-000000000201'$$,
   $$values ('Follow-up needed'::text)$$,
   'Cross-tenant update leaves the other tenant lead unchanged'
 );
 
-reset role;
 rollback;
