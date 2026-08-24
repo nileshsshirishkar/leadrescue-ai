@@ -20,6 +20,12 @@ const FIELD_ALIASES: Record<keyof Lead, string[]> = {
   notes: ["notes", "internalnotes", "comments", "activitynotes", "followupnotes"],
 };
 
+const CSV_SOURCE_ROW = new WeakMap<Lead, number>();
+
+export function getCsvSourceRowNumber(lead: Lead): number | undefined {
+  return CSV_SOURCE_ROW.get(lead);
+}
+
 function normalizeHeading(value: string): string {
   return value
     .normalize("NFKD")
@@ -119,6 +125,7 @@ export function normalizeCsvRows(rows: Record<string, unknown>[]): CsvNormalizat
     }
 
     usedIds.add(uniqueId);
+    CSV_SOURCE_ROW.set(result.data, rowNumber);
     leads.push(result.data);
     validRows.push({ rowNumber, lead: result.data });
   });
