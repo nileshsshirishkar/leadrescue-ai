@@ -109,9 +109,9 @@ export function CsvUploadFeedback() {
   }, [feedback]);
 
   function dismissInlineError() {
-    if (!inlineErrorRegion) return;
     dismissedInlineErrorKeyRef.current = currentInlineErrorKeyRef.current;
-    inlineErrorRegion.hidden = true;
+    const region = findUploadRegion();
+    if (region) region.hidden = true;
     setInlineErrorRegion(null);
   }
 
