@@ -45,21 +45,24 @@ const persistenceRowSchema = z
   })
   .strict();
 
-export type TenantLeadWriteResult =
+export type TenantLeadPersistenceResult =
   | { status: "created"; leadId: string }
   | { status: "existing"; leadId: string }
+  | { status: "unavailable" };
+
+export type TenantLeadWriteResult =
+  | TenantLeadPersistenceResult
   | { status: "invalid" }
   | { status: "unauthenticated" }
   | { status: "missing-membership" }
-  | { status: "ambiguous-membership" }
-  | { status: "unavailable" };
+  | { status: "ambiguous-membership" };
 
 export interface TenantLeadWriteDependencies {
   resolveContext: typeof resolveOrganizationContext;
   persistLead(input: TenantLeadCreateInput): Promise<unknown>;
 }
 
-async function createDefaultDependencies(): Promise<TenantLeadWriteDependencies> {
+export async function createTenantLeadWriteDependencies(): Promise<TenantLeadWriteDependencies> {
   const supabase = await createClient();
 
   return {
@@ -91,6 +94,27 @@ async function createDefaultDependencies(): Promise<TenantLeadWriteDependencies>
   };
 }
 
+export async function persistValidatedTenantLead(
+  input: TenantLeadCreateInput,
+  dependencies: TenantLeadWriteDependencies,
+): Promise<TenantLeadPersistenceResult> {
+  try {
+    const parsedRows = z
+      .array(persistenceRowSchema)
+      .length(1)
+      .safeParse(await dependencies.persistLead(input));
+
+    if (!parsedRows.success) return { status: "unavailable" };
+
+    const row = parsedRows.data[0];
+    return row.result === "created"
+      ? { status: "created", leadId: row.lead_id }
+      : { status: "existing", leadId: row.lead_id };
+  } catch {
+    return { status: "unavailable" };
+  }
+}
+
 export async function persistTenantLead(
   input: unknown,
   dependencies?: TenantLeadWriteDependencies,
@@ -99,22 +123,12 @@ export async function persistTenantLead(
   if (!parsedInput.success) return { status: "invalid" };
 
   try {
-    const effectiveDependencies = dependencies ?? (await createDefaultDependencies());
+    const effectiveDependencies = dependencies ?? (await createTenantLeadWriteDependencies());
     const contextResult = await effectiveDependencies.resolveContext();
 
     if (contextResult.status !== "ok") return contextResult;
 
-    const parsedRows = z
-      .array(persistenceRowSchema)
-      .length(1)
-      .safeParse(await effectiveDependencies.persistLead(parsedInput.data));
-
-    if (!parsedRows.success) return { status: "unavailable" };
-
-    const row = parsedRows.data[0];
-    return row.result === "created"
-      ? { status: "created", leadId: row.lead_id }
-      : { status: "existing", leadId: row.lead_id };
+    return await persistValidatedTenantLead(parsedInput.data, effectiveDependencies);
   } catch {
     return { status: "unavailable" };
   }
