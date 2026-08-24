@@ -31,6 +31,7 @@ describe("CSV normalization", () => {
       followUpCount: 3,
       quotedPrice: 1250,
     });
+    expect(result.validRows[0]).toMatchObject({ rowNumber: 2, lead: { id: "L-9" } });
   });
 
   it("makes duplicate identifiers safe for rendering", () => {
@@ -41,14 +42,17 @@ describe("CSV normalization", () => {
     expect(result.leads.map((lead) => lead.id)).toEqual(["DUP", "DUP-2"]);
   });
 
-  it("keeps valid rows and reports invalid rows", () => {
+  it("keeps original source row numbers when invalid rows are skipped", () => {
     const csv = [
       "Lead Name,Email,Service,Last Touch",
-      "Valid Lead,valid@example.com,Consultation,2026-07-10",
+      "First Lead,first@example.com,Consultation,2026-07-10",
       ",broken-email,Audit,not-a-date",
+      "Third Lead,third@example.com,Audit,2026-07-12",
     ].join("\n");
     const result = parseLeadCsv(csv);
-    expect(result.leads).toHaveLength(1);
+    expect(result.leads).toHaveLength(2);
+    expect(result.validRows.map((row) => row.rowNumber)).toEqual([2, 4]);
+    expect(result.validRows.map((row) => row.lead.name)).toEqual(["First Lead", "Third Lead"]);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].row).toBe(3);
     expect(result.errors[0].message).toContain("Lead name is required");
@@ -59,6 +63,7 @@ describe("CSV normalization", () => {
     const result = parseLeadCsv(sample);
     expect(result.errors).toEqual([]);
     expect(result.leads).toHaveLength(14);
+    expect(result.validRows).toHaveLength(14);
     expect(result.leads.find((lead) => lead.id === "CSV-DEMO-006")).toMatchObject({
       serviceInterest: "",
       source: "Website",

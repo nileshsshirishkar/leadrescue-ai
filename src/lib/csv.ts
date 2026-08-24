@@ -20,6 +20,12 @@ const FIELD_ALIASES: Record<keyof Lead, string[]> = {
   notes: ["notes", "internalnotes", "comments", "activitynotes", "followupnotes"],
 };
 
+const CSV_SOURCE_ROW = new WeakMap<Lead, number>();
+
+export function getCsvSourceRowNumber(lead: Lead): number | undefined {
+  return CSV_SOURCE_ROW.get(lead);
+}
+
 function normalizeHeading(value: string): string {
   return value
     .normalize("NFKD")
@@ -72,6 +78,7 @@ function readableIssues(issues: { path: PropertyKey[]; message: string }[]): str
 
 export function normalizeCsvRows(rows: Record<string, unknown>[]): CsvNormalizationResult {
   const leads: Lead[] = [];
+  const validRows: CsvNormalizationResult["validRows"] = [];
   const errors: CsvNormalizationResult["errors"] = [];
   const usedIds = new Set<string>();
 
@@ -84,6 +91,7 @@ export function normalizeCsvRows(rows: Record<string, unknown>[]): CsvNormalizat
 
     if (!Object.values(normalized).some((value) => cleanText(value))) return;
 
+    const rowNumber = index + 2;
     const baseId = cleanText(normalized.id) || `CSV-${String(index + 1).padStart(3, "0")}`;
     let uniqueId = baseId;
     let suffix = 2;
@@ -112,15 +120,17 @@ export function normalizeCsvRows(rows: Record<string, unknown>[]): CsvNormalizat
 
     const result = leadSchema.safeParse(candidate);
     if (!result.success) {
-      errors.push({ row: index + 2, message: readableIssues(result.error.issues) });
+      errors.push({ row: rowNumber, message: readableIssues(result.error.issues) });
       return;
     }
 
     usedIds.add(uniqueId);
+    CSV_SOURCE_ROW.set(result.data, rowNumber);
     leads.push(result.data);
+    validRows.push({ rowNumber, lead: result.data });
   });
 
-  return { leads, errors, totalRows: rows.length };
+  return { leads, validRows, errors, totalRows: rows.length };
 }
 
 export function parseLeadCsv(csvText: string): CsvNormalizationResult {

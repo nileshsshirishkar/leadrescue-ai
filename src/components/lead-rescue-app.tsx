@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { getSampleLeads } from "@/data/sample-leads";
+import { CsvImportRequestError, importCsvRows } from "@/lib/csv-import-client";
 import { parseLeadCsv } from "@/lib/csv";
 import {
   clearCachedEnhancements,
@@ -592,7 +593,7 @@ export function LeadRescueApp() {
     setSelectedId(null);
     setCsvErrors([]);
     clearCachedEnhancements(window.localStorage);
-    setStatusMessage("Local lead data and saved AI results cleared.");
+    setStatusMessage("Local lead data and saved AI results cleared. Server-backed imported leads are not deleted by this button.");
     window.localStorage.removeItem(STORAGE_KEY);
   }
 
@@ -602,19 +603,51 @@ export function LeadRescueApp() {
     setCsvErrors([]);
     try {
       if (!file.name.toLowerCase().endsWith(".csv")) throw new Error("Choose a .csv file.");
-      if (file.size > 5 * 1024 * 1024) throw new Error("CSV files must be 5 MB or smaller for this local demo.");
+      if (file.size > 5 * 1024 * 1024) throw new Error("CSV files must be 5 MB or smaller.");
       const result = parseLeadCsv(await file.text());
-      setCsvErrors(result.errors);
       if (!result.leads.length) {
+        setCsvErrors(result.errors);
         setStatusMessage("No valid leads were found. Check the row errors and required name field.");
         return;
       }
-      setLeads(result.leads);
-      saveLeads(result.leads);
-      setStatusMessage(`${result.leads.length} valid lead${result.leads.length === 1 ? "" : "s"} imported and analyzed locally${result.errors.length ? `; ${result.errors.length} row error${result.errors.length === 1 ? "" : "s"} skipped` : ""}.`);
+
+      const importRows = result.leads.map((lead, index) => ({
+        rowNumber: index + 2,
+        lead,
+      }));
+      const imported = await importCsvRows(importRows);
+      const successfulRows = new Set(
+        imported.rows.filter((row) => row.status !== "error").map((row) => row.rowNumber),
+      );
+      const savedLeads = result.leads.filter((_lead, index) => successfulRows.has(index + 2));
+      const serverErrors: CsvRowError[] = imported.rows
+        .filter((row) => row.status === "error")
+        .map((row) => ({ row: row.rowNumber, message: "Lead could not be saved to the shared workspace." }));
+      const allErrors = [...result.errors, ...serverErrors];
+
+      setCsvErrors(allErrors);
+      if (!savedLeads.length) {
+        setStatusMessage("No valid leads were saved. Your existing local workspace was not changed.");
+        return;
+      }
+
+      setLeads(savedLeads);
+      saveLeads(savedLeads);
+      setStatusMessage(
+        `${imported.created} lead${imported.created === 1 ? "" : "s"} saved to the shared workspace` +
+        `${imported.existing ? `; ${imported.existing} same-import retr${imported.existing === 1 ? "y" : "ies"} already existed` : ""}` +
+        `${imported.errors ? `; ${imported.errors} server row failure${imported.errors === 1 ? "" : "s"}` : ""}` +
+        `${result.errors.length ? `; ${result.errors.length} CSV validation issue${result.errors.length === 1 ? "" : "s"} skipped` : ""}` +
+        ". The saved rows are analyzed locally below.",
+      );
     } catch (error) {
-      setCsvErrors([{ row: 0, message: error instanceof Error ? error.message : "The CSV could not be read." }]);
-      setStatusMessage("Import stopped. Your existing workspace was not changed.");
+      const message = error instanceof CsvImportRequestError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "The CSV could not be imported.";
+      setCsvErrors([{ row: 0, message }]);
+      setStatusMessage("Import stopped. Your existing local workspace was not changed.");
     } finally {
       setIsProcessing(false);
       setIsDragging(false);
@@ -668,7 +701,7 @@ export function LeadRescueApp() {
               {leads.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => loadSample(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:border-blue-200 hover:text-[#123d78]"><RefreshCw className="size-4" aria-hidden="true" /> Reset demo</button>
-                  <button onClick={clearWorkspace} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-500 hover:border-red-200 hover:text-red-700">Clear workspace</button>
+                  <button onClick={clearWorkspace} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-500 hover:border-red-200 hover:text-red-700">Clear local workspace</button>
                 </div>
               )}
             </div>
@@ -678,9 +711,10 @@ export function LeadRescueApp() {
                 <div className="p-2 sm:p-3">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[#123d78]"><FileSpreadsheet className="size-4" aria-hidden="true" /> Import leads</div>
                   <h2 className="mt-3 text-xl font-bold tracking-tight text-slate-950">Start with safe sample data or your CSV</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">Common column variations are normalized automatically. Deterministic analysis stays in this browser; optional AI enhancement sends one lead only after an explicit request.</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">CSV rows are validated in this browser, then saved through your authenticated LeadRescue workspace before local scoring. The fictional demo remains local only.</p>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">A completed re-upload starts a new import. LeadRescue does not merge contacts automatically by email or phone.</p>
                   <div className="mt-5 flex flex-wrap gap-3">
-                    <button onClick={() => loadSample(false)} className="inline-flex items-center gap-2 rounded-xl bg-[#123d78] px-4 py-3 text-xs font-bold text-white shadow-lg shadow-blue-950/10 hover:bg-[#0d2d5b]"><Sparkles className="size-4" aria-hidden="true" /> Load 14 fictional leads</button>
+                    <button onClick={() => loadSample(false)} className="inline-flex items-center gap-2 rounded-xl bg-[#123d78] px-4 py-3 text-xs font-bold text-white shadow-lg shadow-blue-950/10 hover:bg-[#0d2d5b]"><Sparkles className="size-4" aria-hidden="true" /> Load 14 fictional leads locally</button>
                     <a href="/sample-leads.csv" download className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-700 hover:border-blue-200 hover:text-[#123d78]">Download sample CSV</a>
                   </div>
                 </div>
@@ -695,7 +729,7 @@ export function LeadRescueApp() {
                   <p className="mt-3 text-sm font-bold text-slate-900">Drop a CSV here</p>
                   <p className="mt-1 text-xs text-slate-500">or choose a file up to 5 MB</p>
                   <button disabled={isProcessing} onClick={() => fileInputRef.current?.click()} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-[#123d78] hover:border-blue-200 disabled:cursor-wait disabled:opacity-60">
-                    {isProcessing ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <FileSpreadsheet className="size-4" aria-hidden="true" />} {isProcessing ? "Validating…" : "Choose CSV"}
+                    {isProcessing ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <FileSpreadsheet className="size-4" aria-hidden="true" />} {isProcessing ? "Saving…" : "Choose CSV"}
                   </button>
                   <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleCsvFile(file); event.currentTarget.value = ""; }} />
                 </div>
@@ -705,7 +739,7 @@ export function LeadRescueApp() {
                   {statusMessage && <p className="flex items-start gap-2 text-xs font-semibold text-slate-600"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-cyan-600" aria-hidden="true" /> {statusMessage}</p>}
                   {csvErrors.length > 0 && (
                     <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-                      <p className="flex items-center gap-2 font-bold"><AlertCircle className="size-4" aria-hidden="true" /> CSV validation issues</p>
+                      <p className="flex items-center gap-2 font-bold"><AlertCircle className="size-4" aria-hidden="true" /> CSV import issues</p>
                       <ul className="mt-2 space-y-1.5 pl-6">
                         {csvErrors.slice(0, 4).map((error, index) => <li key={`${error.row}-${index}`}>{error.row ? `Row ${error.row}: ` : ""}{error.message}</li>)}
                       </ul>

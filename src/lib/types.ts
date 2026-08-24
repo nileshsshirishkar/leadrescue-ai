@@ -44,8 +44,14 @@ export interface CsvRowError {
   message: string;
 }
 
+export interface CsvNormalizedRow {
+  rowNumber: number;
+  lead: Lead;
+}
+
 export interface CsvNormalizationResult {
   leads: Lead[];
+  validRows: CsvNormalizedRow[];
   errors: CsvRowError[];
   totalRows: number;
 }
