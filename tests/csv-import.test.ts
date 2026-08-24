@@ -14,6 +14,7 @@ function dependencies(overrides: Partial<TenantLeadWriteDependencies> = {}): Ten
           id: "b3e33046-b73a-4a09-ae85-bfc55c2fc6ed",
           name: "LeadRescue QA",
           slug: "leadrescue-qa",
+          access_status: "active",
         },
         role: "owner",
       },
