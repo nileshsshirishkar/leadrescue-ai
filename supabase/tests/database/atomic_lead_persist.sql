@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(16);
+select extensions.plan(18);
 
 insert into auth.users (id, aud, role, email, created_at, updated_at, is_sso_user, is_anonymous)
 values
@@ -43,6 +43,26 @@ $$;
 create trigger test_reject_persist_event_trigger
 before insert on public.lead_events
 for each row execute function public.test_reject_persist_event();
+
+create or replace function public.test_unrelated_unique_violation()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.email = 'unique-probe@leadrescue.invalid' then
+    raise unique_violation
+      using message = 'test unrelated uniqueness violation',
+            constraint = 'test_unrelated_contact_unique';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger test_unrelated_unique_violation_trigger
+before insert on public.contacts
+for each row execute function public.test_unrelated_unique_violation();
 
 select extensions.ok(
   has_function_privilege(
@@ -165,6 +185,22 @@ select extensions.results_eq(
   $$select count(*)::bigint from public.leads where organization_id = '30000000-0000-0000-0000-000000000001' and source_external_id = 'rollback-001'$$,
   $$values (0::bigint)$$,
   'Audit-event failure rolls back the new lead'
+);
+
+select extensions.throws_ok(
+  $$select * from public.persist_imported_lead(
+    'Unrelated Unique Probe', null, null, 'unique-probe@leadrescue.invalid', '', '',
+    'manual-import', 'unique-probe-001', 'New', '', null, 0, '', null, null, '', ''
+  )$$,
+  '23505',
+  'test unrelated uniqueness violation',
+  'Unrelated uniqueness violations are rethrown instead of treated as idempotent retries'
+);
+
+select extensions.results_eq(
+  $$select count(*)::bigint from public.leads where organization_id = '30000000-0000-0000-0000-000000000001' and source_external_id = 'unique-probe-001'$$,
+  $$values (0::bigint)$$,
+  'Unrelated uniqueness failures leave no persisted lead'
 );
 
 reset role;
