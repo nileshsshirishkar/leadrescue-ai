@@ -1,6 +1,6 @@
 # PR #17 Authenticated One-Lead Create Validation
 
-**Status:** IMPLEMENTED ON PR #17, CI VERIFIED, PREVIEW PARTIALLY VERIFIED. Authenticated Preview POST remains an open runtime gate.
+**Status:** PASS. Authenticated Preview created/existing/invalid runtime behavior is now verified, direct hosted Dev state was checked, and the fictional runtime fixture was cleaned.
 
 ## Repository guard
 
@@ -25,16 +25,16 @@ It does not add bulk CSV orchestration, localStorage migration, contact deduplic
 
 Current Supabase documentation was rechecked before implementation:
 
-- server-side Next.js access should use the SSR server client backed by request cookies
-- `auth.getClaims()` is the recommended verified identity check for protected server data
+- server-side Next.js access uses the SSR server client backed by request cookies
+- `auth.getClaims()` is used for protected server identity verification
 - PostgreSQL functions are invoked through `supabase.rpc(functionName, args)`
-- authenticated Supabase requests carry the user Auth token into the Data API/RLS boundary
+- authenticated Supabase requests carry the user's Auth context into the Data API and RLS boundary
 
 ## Automated validation
 
-PR head before this documentation commit: `321357fe1dea819db68da5df4d1b5b9ab61a3ad6`.
+Implementation head before the runtime-evidence documentation update: `1e4c4165221d172cfe82bfa6a67f508edaf10bf8`.
 
-CI run #69: PASS.
+CI run #70: PASS.
 
 - `Verify`: PASS
   - install
@@ -46,7 +46,7 @@ CI run #69: PASS.
   - local Supabase startup
   - pgTAP database suites
 
-Focused tests verify:
+Focused tests cover:
 
 - valid one-lead input returns `created`
 - idempotent RPC result returns `existing`
@@ -63,41 +63,113 @@ Focused tests verify:
 - ambiguous membership maps to 409
 - persistence failures map to sanitized 503
 
-## Preview evidence
+## Exact Preview validated
 
-Vercel Preview deployment for exact head `321357fe1dea819db68da5df4d1b5b9ab61a3ad6`:
+Vercel Preview deployment:
 
-- deployment id: `dpl_5M3N2ShvTyi6zMLUryHj8aKnnkAx`
+- deployment id: `dpl_FTydTsDUDb1diMhEThCVCAzToRnV`
 - branch: `feat/authenticated-lead-create`
+- commit: `1e4c4165221d172cfe82bfa6a67f508edaf10bf8`
 - state: READY
 
-Direct signed-out Preview fetch of `/api/leads` returned:
+The controlled QA user signed into this exact Preview before the authenticated runtime calls.
 
-- HTTP 401
-- `Authentication required.`
-- `Cache-Control: private, no-store`
+## Authenticated runtime evidence
 
-Vercel runtime logs independently recorded the same Preview request as `GET /api/leads 401` on the exact deployment.
+Controlled fictional idempotency key:
 
-## Remaining runtime gate
+- source: `manual_csv`
+- source external id: `qa-app-write-20260825-001`
 
-The available connected tooling does not hold an authenticated LeadRescue Preview browser session and does not expose a safe Supabase Auth admin action for creating a temporary login session. The existing controlled QA account password must not be extracted, reset, guessed, or exposed merely to complete this test.
+### First authenticated POST
 
-Therefore the following is **REQUIRES VERIFICATION** before PR #17 may merge:
+The Preview returned:
 
-1. Authenticated Preview `POST /api/leads` using controlled fictional data.
-2. Verify the response is `created` and capture the returned lead id.
-3. Repeat the same request with the same source/source-external-id but deliberately changed human-editable values and verify the response is `existing`.
-4. Directly verify hosted Dev still contains exactly one logical lead, one corresponding contact, and one initial import event for that key, with no overwrite from the retry.
-5. Exercise one invalid payload through Preview and verify sanitized 400 behavior.
-6. Clean up the fictional Preview fixture after evidence capture.
+- HTTP 201
+- `ok: true`
+- `result: created`
+- lead id `4868e702-8812-450f-99ed-a83b5d81ef73`
 
-Do not weaken this gate by treating unit tests, the prior PR #14 direct database concurrency test, or a signed-out Preview request as proof of the authenticated application write path.
+Direct hosted Dev verification immediately afterward confirmed:
+
+- the returned lead id existed
+- status was `New`
+- notes were `Original PR17 runtime value`
+- exactly one corresponding contact existed
+- exactly one `lead_imported` event existed
+
+### Same-key retry
+
+The second authenticated POST reused the same source and source external id while deliberately sending different human-editable values:
+
+- status: `Changed-On-Retry`
+- notes: `THIS MUST NOT OVERWRITE THE ORIGINAL VALUE`
+
+The Preview returned:
+
+- HTTP 200
+- `ok: true`
+- `result: existing`
+- the same lead id `4868e702-8812-450f-99ed-a83b5d81ef73`
+
+Direct hosted Dev verification after the retry confirmed:
+
+- exactly one matching lead
+- exactly one matching contact
+- exactly one `lead_imported` event
+- persisted status remained `New`
+- persisted notes remained `Original PR17 runtime value`
+- the retry did not overwrite the original values
+
+### Invalid authenticated payload
+
+An authenticated POST with `{ test: true }` returned:
+
+- HTTP 400
+- `ok: false`
+- `error: Invalid lead payload.`
+
+Vercel runtime logs independently recorded the exact Preview requests as:
+
+- `POST /api/leads 201`
+- `POST /api/leads 200`
+- `POST /api/leads 400`
+
+## Cleanup verification
+
+After evidence capture, the fictional runtime fixture was deleted from hosted Dev.
+
+Direct final counts were restored to:
+
+- 1 Auth user
+- 1 organization
+- 1 organization membership
+- 1 contact
+- 1 lead
+- 0 lead events
+- 0 follow-up tasks
+- 0 remaining leads with source external id `qa-app-write-20260825-001`
+
+No Production data or schema was changed.
+
+## Runtime gate result
+
+**PASS.**
+
+The authenticated application path is runtime-proven in Preview for one controlled imported lead:
+
+1. authenticated POST reaches the server route and verified RPC boundary;
+2. first call creates one logical lead/contact/import event;
+3. same-key retry returns the existing lead;
+4. retry input does not overwrite stored human-editable values;
+5. malformed authenticated input is rejected with sanitized 400 behavior;
+6. runtime evidence is visible in Vercel logs;
+7. hosted Dev was cleaned back to baseline.
 
 ## Promotion boundary
 
-Keep PR #17 draft until the authenticated Preview runtime gate passes and the final documentation commit has green CI.
+Run final CI on the exact final PR head after this documentation update. If all required checks pass, mark PR #17 ready and merge it to `develop` only.
 
-If the gate passes, update the Decision Log, run final CI on the exact final head, mark PR #17 ready, and merge to `develop` only.
+Do not merge PR #17 to `main`. Do not change Production as part of this milestone.
 
-Do not merge to `main`. Production remains unchanged.
+The next controlled build milestone is CSV import orchestration around this verified one-lead application persistence boundary.
