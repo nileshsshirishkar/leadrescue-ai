@@ -33,7 +33,7 @@ interface CsvImportApiResponse {
   errors: number;
 }
 
-interface StorageLike {
+export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
@@ -109,16 +109,37 @@ export function clearPendingImportId(storage: StorageLike, fingerprint: string):
   storage.removeItem(pendingImportKey(fingerprint));
 }
 
+function defaultSessionStorage(): StorageLike | undefined {
+  try {
+    return typeof window === "undefined" ? undefined : window.sessionStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+async function fingerprintImportRows(rows: CsvImportClientRow[]): Promise<string> {
+  return createCsvFingerprint(JSON.stringify(rows.map(({ rowNumber, lead }) => ({ rowNumber, lead }))));
+}
+
 export async function importCsvRows(
   rows: CsvImportClientRow[],
   options: {
     importId?: string;
     fetchImpl?: typeof fetch;
+    retryStorage?: StorageLike;
   } = {},
 ): Promise<CsvImportClientResult> {
   if (!rows.length) throw new Error("At least one valid CSV row is required.");
 
-  const importId = options.importId ?? createImportId();
+  const retryStorage = options.retryStorage ?? defaultSessionStorage();
+  const retryFingerprint = options.importId || !retryStorage
+    ? undefined
+    : await fingerprintImportRows(rows);
+  const importId = options.importId ?? (
+    retryStorage && retryFingerprint
+      ? getOrCreatePendingImportId(retryStorage, retryFingerprint)
+      : createImportId()
+  );
   const fetchImpl = options.fetchImpl ?? fetch;
   const results: CsvImportClientRowResult[] = [];
 
@@ -163,11 +184,17 @@ export async function importCsvRows(
     results.push(...body.rows);
   }
 
-  return {
+  const output: CsvImportClientResult = {
     importId,
     rows: results,
     created: results.filter((row) => row.status === "created").length,
     existing: results.filter((row) => row.status === "existing").length,
     errors: results.filter((row) => row.status === "error").length,
   };
+
+  if (output.errors === 0 && retryStorage && retryFingerprint) {
+    clearPendingImportId(retryStorage, retryFingerprint);
+  }
+
+  return output;
 }
