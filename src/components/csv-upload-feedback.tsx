@@ -1,11 +1,13 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type UploadFeedback =
   | { kind: "success"; title: string; detail: string }
   | { kind: "error"; title: string; detail: string };
+
+const AUTO_DISMISS_MS = 5_000;
 
 function readUploadFeedback(): UploadFeedback | null {
   const region = document.querySelector<HTMLElement>('#import [aria-live="polite"]');
@@ -39,17 +41,43 @@ function readUploadFeedback(): UploadFeedback | null {
   return null;
 }
 
+function feedbackKey(feedback: UploadFeedback | null) {
+  return feedback ? `${feedback.kind}|${feedback.title}|${feedback.detail}` : null;
+}
+
 export function CsvUploadFeedback() {
   const [feedback, setFeedback] = useState<UploadFeedback | null>(null);
+  const lastObservedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const syncFeedback = () => setFeedback(readUploadFeedback());
+    const syncFeedback = () => {
+      const next = readUploadFeedback();
+      const nextKey = feedbackKey(next);
+
+      if (!nextKey) {
+        lastObservedKeyRef.current = null;
+        return;
+      }
+
+      if (nextKey === lastObservedKeyRef.current) return;
+
+      lastObservedKeyRef.current = nextKey;
+      setFeedback(next);
+    };
+
     syncFeedback();
 
     const observer = new MutationObserver(syncFeedback);
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!feedback) return;
+
+    const timer = window.setTimeout(() => setFeedback(null), AUTO_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
 
   if (!feedback) return null;
 
