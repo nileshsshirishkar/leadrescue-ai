@@ -20,7 +20,28 @@ body {
 }
 button, input { font: inherit; }
 button, a, input, [tabindex] { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+
+:where(button:not(:disabled), a[href], [role="button"]:not([aria-disabled="true"]), [role="link"]:not([aria-disabled="true"]), summary) {
+  cursor: pointer;
+}
+
+:where(button:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+:where(button:not(:disabled), a[href], [role="button"]:not([aria-disabled="true"]), [role="link"]:not([aria-disabled="true"])) {
+  transition-property: background-color, border-color, color, box-shadow, filter, transform;
+  transition-duration: 160ms;
+  transition-timing-function: ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(button:not(:disabled), a[href], [role="button"]:not([aria-disabled="true"]), [role="link"]:not([aria-disabled="true"])):hover {
+    filter: brightness(0.96);
+  }
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible, [role="button"]:focus-visible, [role="link"]:focus-visible {
   outline: 3px solid rgba(14, 159, 186, 0.35);
   outline-offset: 2px;
 }
@@ -32,6 +53,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-vis
     linear-gradient(rgba(18, 61, 120, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(18, 61, 120, 0.025) 1px, transparent 1px);
   background-size: auto, 28px 28px, 28px 28px;
+}
+
+#import [aria-live="polite"] {
+  border: 1px solid #a5f3fc;
+  border-radius: 1rem;
+  background: #ecfeff;
+  padding: 0.9rem 1rem;
+}
+
+#import [aria-live="polite"]:has([role="alert"], .border-red-200) {
+  border-color: #fecaca;
+  background: #fef2f2;
 }
 
 .metric-card { box-shadow: 0 1px 2px rgba(15, 35, 70, 0.03), 0 10px 30px rgba(15, 35, 70, 0.04); }
