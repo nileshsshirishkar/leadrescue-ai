@@ -122,6 +122,40 @@ describe("CSV import client", () => {
     expect(getOrCreatePendingImportId(storage, "same-file", createId)).toBe(secondId);
   });
 
+  it("automatically reuses the same import id after an interrupted request", async () => {
+    const storage = memoryStorage();
+    const rows = [{ rowNumber: 2, lead: lead(1) }];
+    let failedImportId = "";
+
+    const failingFetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      failedImportId = JSON.parse(String(init?.body)).importId;
+      return new Response(JSON.stringify({ ok: false, error: "CSV import is temporarily unavailable." }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    await expect(importCsvRows(rows, {
+      retryStorage: storage,
+      fetchImpl: failingFetch as typeof fetch,
+    })).rejects.toMatchObject({ status: 503 });
+
+    let retryImportId = "";
+    const successfulFetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      retryImportId = body.importId;
+      return okResponse(body.importId, body.rows);
+    });
+
+    await importCsvRows(rows, {
+      retryStorage: storage,
+      fetchImpl: successfulFetch as typeof fetch,
+    });
+
+    expect(failedImportId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(retryImportId).toBe(failedImportId);
+  });
+
   it("surfaces sanitized endpoint failures without continuing later batches", async () => {
     const fetchImpl = vi.fn(async () => new Response(
       JSON.stringify({ ok: false, error: "Authentication required." }),
