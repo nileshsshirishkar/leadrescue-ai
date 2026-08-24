@@ -111,7 +111,7 @@ export function FollowUpReminders() {
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-cyan-700">
             <Clock3 className="size-4" aria-hidden="true" /> Follow-up reminders
           </div>
-          <h2 className="mt-2 text-xl font-bold tracking-tight text-slate-950">Server-backed due, overdue and upcoming work</h2>
+          <h2 className="mt-2 text-xl font-bold tracking-tight text-slate-950">Overdue and upcoming follow-up reminders</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
             Pending follow-up tasks come from the shared LeadRescue workspace and use the saved task due time, not browser-local lead state.
           </p>
