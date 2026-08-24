@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { parseLeadCsv } from "@/lib/csv";
 import {
   CsvImportRequestError,
   clearPendingImportId,
@@ -80,6 +81,33 @@ describe("CSV import client", () => {
     expect(result.created).toBe(1);
     expect(result.existing).toBe(1);
     expect(result.errors).toBe(0);
+  });
+
+  it("uses the original CSV line for persistence even after an invalid row is skipped", async () => {
+    const parsed = parseLeadCsv([
+      "Lead Name,Email",
+      "First Lead,first@example.com",
+      ",broken-email",
+      "Third Lead,third@example.com",
+    ].join("\n"));
+    expect(parsed.validRows.map((row) => row.rowNumber)).toEqual([2, 4]);
+
+    const importId = "7e3d9f4b-2875-4e9d-a2bd-4ad5c2a6c181";
+    let requestRows: Array<{ rowNumber: number }> = [];
+    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      requestRows = body.rows;
+      return okResponse(importId, body.rows);
+    });
+
+    const result = await importCsvRows(parsed.leads.map((item, index) => ({
+      rowNumber: index + 2,
+      lead: item,
+    })), { importId, fetchImpl: fetchImpl as typeof fetch });
+
+    expect(requestRows.map((row) => row.rowNumber)).toEqual([2, 4]);
+    expect(result.rows.map((row) => row.rowNumber)).toEqual([2, 3]);
+    expect(result.rows.map((row) => row.sourceRowNumber)).toEqual([2, 4]);
   });
 
   it("chunks more than 100 rows while keeping one import id", async () => {
