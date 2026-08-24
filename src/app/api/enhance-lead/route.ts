@@ -9,7 +9,7 @@ import {
   type EnhancementRequest,
 } from "@/lib/enhancement";
 import { buildEnhancementModelInput } from "@/lib/enhancement-prompt";
-import { hasAuthenticatedUser } from "@/lib/supabase/auth";
+import { resolveOrganizationAccessContext } from "@/lib/supabase/organization-context";
 
 export const runtime = "nodejs";
 
@@ -33,8 +33,10 @@ interface ModelResult {
   };
 }
 
+type RequestAuthorization = boolean | "forbidden";
+
 export interface EnhanceLeadDependencies {
-  authorizeRequest(): Promise<boolean>;
+  authorizeRequest(): Promise<RequestAuthorization>;
   getConfig(): RuntimeConfig;
   invokeModel(request: EnhancementRequest, config: ModelConfig): Promise<ModelResult>;
 }
@@ -73,7 +75,12 @@ async function invokeOpenAI(request: EnhancementRequest, config: ModelConfig): P
 }
 
 const defaultDependencies: EnhanceLeadDependencies = {
-  authorizeRequest: hasAuthenticatedUser,
+  async authorizeRequest() {
+    const access = await resolveOrganizationAccessContext();
+    if (access.status === "ok") return true;
+    if (access.status === "unauthenticated") return false;
+    return "forbidden";
+  },
   getConfig: () => ({
     apiKey: process.env.OPENAI_API_KEY,
     model: process.env.OPENAI_MODEL,
@@ -96,7 +103,11 @@ function hasValidDemoAccess(submittedCode: string | null, configuredCode: string
 
 export function createEnhanceLeadHandler(dependencies: EnhanceLeadDependencies = defaultDependencies) {
   return async function POST(request: Request): Promise<Response> {
-    if (!(await dependencies.authorizeRequest())) {
+    const authorization = await dependencies.authorizeRequest();
+    if (authorization === "forbidden") {
+      return jsonError("Organization access is unavailable.", 403);
+    }
+    if (!authorization) {
       return jsonError("Authentication required.", 401);
     }
 
