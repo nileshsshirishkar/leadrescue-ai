@@ -2,6 +2,66 @@
 
 This file records implemented or explicitly approved decisions that materially affect release, security, architecture, or commercial readiness. It does not replace the Project MASTER CURRENT STATE.
 
+## 2026-08-24 - Atomic imported-lead persistence concurrency gate
+
+**Status:** IMPLEMENTED AND VERIFIED IN HOSTED DEV on PR #14. Application write path and Production persistence remain NOT IMPLEMENTED.
+
+### Decision
+
+Accept `public.persist_imported_lead(...)` as the verified one-lead imported/provider persistence boundary after a genuine simultaneous two-session same-key hosted Dev test passed.
+
+The function remains limited to one imported lead per call. It is not a bulk CSV orchestrator and it does not authorize browser-supplied organization or actor identity.
+
+### Implementation boundary
+
+- `SECURITY INVOKER` PostgreSQL function.
+- Authenticated user membership derives the organization.
+- Source plus source external id form the imported-lead idempotency key.
+- First successful call creates one contact, one lead, and one `lead_imported` event atomically.
+- Same-key retry returns the existing lead without overwriting later human-editable fields.
+- Transaction-scoped advisory locking plus the unique lead key protects concurrent same-key requests.
+- Execute remains granted to `authenticated` and denied to `anon` and `public`.
+- Email and phone remain excluded as automatic contact-deduplication keys.
+
+### Verification
+
+- Repository guard reverified exactly as `nileshsshirishkar/leadrescue-ai` before mutation.
+- Hosted project: `LeadRescue AI Dev`, project ref `vzlltqutwsnnjzepyogj`.
+- Hosted migration remains `20260824143703_create_atomic_imported_lead_function`.
+- CI #63 passed on PR head `3e1cc3ff82771f463888f1836593cef6693efbaf` with `Verify` and `Database Tests` successful.
+- A true simultaneous two-session hosted Dev test ran through two independent PostgreSQL cron job sessions under the controlled authenticated QA identity.
+- First concurrent run used backend PIDs `406445` and `406444` with overlapping execution windows beginning within milliseconds of each other.
+- Session A returned `created`.
+- Session B returned `existing`.
+- Both returned the same lead id `5943675d-cd18-41cd-98ab-6b6342ad5c94`.
+- Direct database verification found exactly one logical lead, one corresponding contact, and one `lead_imported` event.
+- Zero orphan contacts were found.
+- Session B supplied different status and notes values, but the persisted status and notes from the creating session were not overwritten.
+- Both sessions terminated successfully and no deadlock occurred.
+- The temporary scheduled jobs, result table, test lead/contact/event rows, and temporary `pg_cron` extension were removed after evidence capture.
+- Direct cleanup verification restored the Dev fixture baseline to 1 Auth user, 1 organization, 1 membership, 1 contact, 1 lead, 0 lead events, and 0 follow-up tasks.
+- The concurrency fixture source external id had zero remaining rows after cleanup.
+- CI #64 passed after the concurrency validation document was updated on PR head `4e105a00b68a9ec29cdf39c93a12ff1824507d7a`.
+
+### Safety boundary
+
+- Production and `main` were unchanged.
+- No application API write endpoint was added.
+- No bulk CSV orchestration was added.
+- No localStorage migration was performed.
+- No provider integration was added.
+- The existing Supabase leaked-password-protection warning remains a separate Production-authentication gate.
+
+### Promotion decision
+
+PR #14 may move out of draft after final CI passes on the exact final head and may then merge into `develop` only. Do not merge this milestone to `main` and do not promote it to Production.
+
+The next controlled engineering slice is the authenticated application one-lead create path using this verified persistence boundary with server-side validation and authenticated tenant derivation.
+
+### Master Current State delta
+
+After PR #14 merges, classify atomic one-lead imported persistence as IMPLEMENTED AND VERIFIED IN HOSTED DEV / DEVELOP. Remove the true two-session concurrency item from the open PR #14 gate. Application create, bulk CSV orchestration, lead detail/contact reads, ongoing status/task writes, reminders, founder pause enforcement, Production Supabase, provider connectors, and commercial readiness remain incomplete.
+
 ## 2026-08-23 - Lead write idempotency foundation
 
 **Status:** IMPLEMENTED AND VERIFIED IN HOSTED DEV for the database prerequisite. Application lead/contact/event writes remain NOT IMPLEMENTED.
