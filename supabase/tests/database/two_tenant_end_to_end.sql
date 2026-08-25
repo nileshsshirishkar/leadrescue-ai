@@ -119,18 +119,23 @@ select extensions.results_eq(
 
 select extensions.results_eq(
   $$select count(*)::bigint from public.persist_imported_lead(
-    'E2E New Lead A',
-    null,
-    null,
-    'qa',
-    'e2e-a-created',
-    'Tenant A created service',
-    'New',
-    null,
-    0,
-    null,
-    null,
-    'Tenant A created through RPC'
+    p_full_name => 'E2E New Lead A',
+    p_phone_raw => null::text,
+    p_phone_e164 => null::text,
+    p_email => null::text,
+    p_business_type => null::text,
+    p_service_interest => 'Tenant A created service',
+    p_source => 'qa',
+    p_source_external_id => 'e2e-a-created',
+    p_status => 'New',
+    p_enquiry_text => null::text,
+    p_last_contact_at => null::timestamptz,
+    p_follow_up_count => 0,
+    p_appointment_status => null::text,
+    p_quoted_price => null::numeric,
+    p_quoted_currency => null::text,
+    p_budget_signal => null::text,
+    p_notes => 'Tenant A created through RPC'
   ) where result='created'$$,
   $$values (1::bigint)$$,
   'Tenant A can create its own imported lead through authenticated RPC'
