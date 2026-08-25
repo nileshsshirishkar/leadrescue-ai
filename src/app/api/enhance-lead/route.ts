@@ -9,7 +9,7 @@ import {
   type EnhancementRequest,
 } from "@/lib/enhancement";
 import { buildEnhancementModelInput } from "@/lib/enhancement-prompt";
-import { resolveOrganizationAccessContext } from "@/lib/supabase/organization-context";
+import { resolveOrganizationContext } from "@/lib/supabase/organization-context";
 
 export const runtime = "nodejs";
 
@@ -76,7 +76,7 @@ async function invokeOpenAI(request: EnhancementRequest, config: ModelConfig): P
 
 const defaultDependencies: EnhanceLeadDependencies = {
   async authorizeRequest() {
-    const access = await resolveOrganizationAccessContext();
+    const access = await resolveOrganizationContext();
     if (access.status === "ok") return true;
     if (access.status === "unauthenticated") return false;
     return "forbidden";
