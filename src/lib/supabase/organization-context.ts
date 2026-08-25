@@ -46,13 +46,23 @@ export interface OrganizationContextDependencies {
   listOrganizations(organizationId: string): Promise<unknown>;
 }
 
+function isAuthenticationClaimsError(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("status" in error)) return false;
+
+  const status = (error as { status?: unknown }).status;
+  return typeof status === "number" && status >= 400 && status < 500;
+}
+
 async function createDefaultDependencies(): Promise<OrganizationContextDependencies> {
   const supabase = await createClient();
 
   return {
     async getAuthenticatedUserId() {
       const { data, error } = await supabase.auth.getClaims();
-      if (error) throw error;
+      if (error) {
+        if (isAuthenticationClaimsError(error)) return null;
+        throw error;
+      }
 
       const userId = data?.claims?.sub;
       return typeof userId === "string" && userId.length > 0 ? userId : null;
