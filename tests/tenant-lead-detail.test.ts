@@ -50,6 +50,7 @@ function createDependencies(
           id: organizationId,
           name: "LeadRescue QA",
           slug: "leadrescue-qa",
+          access_status: "active",
         },
         role: "owner",
       },

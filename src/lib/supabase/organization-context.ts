@@ -13,15 +13,25 @@ const organizationRowSchema = z
     id: z.string().uuid(),
     name: z.string().min(1),
     slug: z.string().min(1),
+    access_status: z.enum(["active", "paused"]),
   })
   .strict();
 
 export type OrganizationRole = z.infer<typeof membershipRowSchema>["role"];
+export type OrganizationAccessStatus = z.infer<typeof organizationRowSchema>["access_status"];
 
 export interface OrganizationContext {
   organization: z.infer<typeof organizationRowSchema>;
   role: OrganizationRole;
 }
+
+export type OrganizationAccessContextResult =
+  | { status: "ok"; context: OrganizationContext }
+  | { status: "paused"; context: OrganizationContext }
+  | { status: "unauthenticated" }
+  | { status: "missing-membership" }
+  | { status: "ambiguous-membership" }
+  | { status: "unavailable" };
 
 export type OrganizationContextResult =
   | { status: "ok"; context: OrganizationContext }
@@ -62,7 +72,7 @@ async function createDefaultDependencies(): Promise<OrganizationContextDependenc
     async listOrganizations(organizationId) {
       const { data, error } = await supabase
         .from("organizations")
-        .select("id, name, slug")
+        .select("id, name, slug, access_status")
         .eq("id", organizationId)
         .limit(2);
 
@@ -72,9 +82,9 @@ async function createDefaultDependencies(): Promise<OrganizationContextDependenc
   };
 }
 
-export async function resolveOrganizationContext(
+export async function resolveOrganizationAccessContext(
   dependencies?: OrganizationContextDependencies,
-): Promise<OrganizationContextResult> {
+): Promise<OrganizationAccessContextResult> {
   try {
     const effectiveDependencies = dependencies ?? (await createDefaultDependencies());
     const userId = await effectiveDependencies.getAuthenticatedUserId();
@@ -100,14 +110,25 @@ export async function resolveOrganizationContext(
       return { status: "unavailable" };
     }
 
-    return {
-      status: "ok",
-      context: {
-        organization: organizationParse.data[0],
-        role: membership.role,
-      },
+    const context: OrganizationContext = {
+      organization: organizationParse.data[0],
+      role: membership.role,
     };
+
+    if (context.organization.access_status === "paused") {
+      return { status: "paused", context };
+    }
+
+    return { status: "ok", context };
   } catch {
     return { status: "unavailable" };
   }
+}
+
+export async function resolveOrganizationContext(
+  dependencies?: OrganizationContextDependencies,
+): Promise<OrganizationContextResult> {
+  const result = await resolveOrganizationAccessContext(dependencies);
+  if (result.status === "paused") return { status: "missing-membership" };
+  return result;
 }

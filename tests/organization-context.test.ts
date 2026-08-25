@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveOrganizationAccessContext,
   resolveOrganizationContext,
   type OrganizationContextDependencies,
 } from "@/lib/supabase/organization-context";
@@ -20,14 +21,15 @@ function createDependencies(
         id: organizationId,
         name: "LeadRescue QA",
         slug: "leadrescue-qa",
+        access_status: "active",
       },
     ],
     ...overrides,
   };
 }
 
-describe("resolveOrganizationContext", () => {
-  it("returns the single authenticated organization context", async () => {
+describe("organization context", () => {
+  it("returns the single active authenticated organization context", async () => {
     await expect(resolveOrganizationContext(createDependencies())).resolves.toEqual({
       status: "ok",
       context: {
@@ -35,9 +37,53 @@ describe("resolveOrganizationContext", () => {
           id: organizationId,
           name: "LeadRescue QA",
           slug: "leadrescue-qa",
+          access_status: "active",
         },
         role: "owner",
       },
+    });
+  });
+
+  it("returns a distinct paused result for UI/access diagnostics", async () => {
+    const dependencies = createDependencies({
+      listOrganizations: async () => [
+        {
+          id: organizationId,
+          name: "LeadRescue QA",
+          slug: "leadrescue-qa",
+          access_status: "paused",
+        },
+      ],
+    });
+
+    await expect(resolveOrganizationAccessContext(dependencies)).resolves.toEqual({
+      status: "paused",
+      context: {
+        organization: {
+          id: organizationId,
+          name: "LeadRescue QA",
+          slug: "leadrescue-qa",
+          access_status: "paused",
+        },
+        role: "owner",
+      },
+    });
+  });
+
+  it("fails closed for normal protected operations when organization is paused", async () => {
+    const dependencies = createDependencies({
+      listOrganizations: async () => [
+        {
+          id: organizationId,
+          name: "LeadRescue QA",
+          slug: "leadrescue-qa",
+          access_status: "paused",
+        },
+      ],
+    });
+
+    await expect(resolveOrganizationContext(dependencies)).resolves.toEqual({
+      status: "missing-membership",
     });
   });
 
@@ -96,6 +142,23 @@ describe("resolveOrganizationContext", () => {
     await expect(
       resolveOrganizationContext(
         createDependencies({ listOrganizations: async () => [] }),
+      ),
+    ).resolves.toEqual({ status: "unavailable" });
+  });
+
+  it("fails closed on malformed organization access status", async () => {
+    await expect(
+      resolveOrganizationAccessContext(
+        createDependencies({
+          listOrganizations: async () => [
+            {
+              id: organizationId,
+              name: "LeadRescue QA",
+              slug: "leadrescue-qa",
+              access_status: "suspended",
+            },
+          ],
+        }),
       ),
     ).resolves.toEqual({ status: "unavailable" });
   });
