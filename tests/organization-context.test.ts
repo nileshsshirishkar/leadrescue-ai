@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isAuthenticationClaimsError,
   resolveOrganizationAccessContext,
   resolveOrganizationContext,
   type OrganizationContextDependencies,
@@ -29,6 +30,20 @@ function createDependencies(
 }
 
 describe("organization context", () => {
+  it("classifies malformed JWT parse errors as authentication failures", () => {
+    expect(isAuthenticationClaimsError(new SyntaxError("Unexpected token"))).toBe(true);
+  });
+
+  it("classifies Supabase 4xx auth errors as authentication failures", () => {
+    expect(isAuthenticationClaimsError({ status: 400 })).toBe(true);
+    expect(isAuthenticationClaimsError({ status: 401 })).toBe(true);
+  });
+
+  it("does not classify infrastructure failures as authentication failures", () => {
+    expect(isAuthenticationClaimsError({ status: 503 })).toBe(false);
+    expect(isAuthenticationClaimsError(new Error("network unavailable"))).toBe(false);
+  });
+
   it("returns the single active authenticated organization context", async () => {
     await expect(resolveOrganizationContext(createDependencies())).resolves.toEqual({
       status: "ok",
