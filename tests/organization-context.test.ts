@@ -39,8 +39,10 @@ describe("organization context", () => {
     expect(isAuthenticationClaimsError({ status: 401 })).toBe(true);
   });
 
-  it("does not classify infrastructure failures as authentication failures", () => {
+  it("does not classify infrastructure or statusless failures as authentication failures", () => {
     expect(isAuthenticationClaimsError({ status: 503 })).toBe(false);
+    expect(isAuthenticationClaimsError({})).toBe(false);
+    expect(isAuthenticationClaimsError({ status: undefined })).toBe(false);
     expect(isAuthenticationClaimsError(new Error("network unavailable"))).toBe(false);
   });
 
