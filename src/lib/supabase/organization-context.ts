@@ -46,7 +46,11 @@ export interface OrganizationContextDependencies {
   listOrganizations(organizationId: string): Promise<unknown>;
 }
 
-function isAuthenticationClaimsError(error: unknown): boolean {
+export function isAuthenticationClaimsError(error: unknown): boolean {
+  // Supabase AuthInvalidJwtError values carry a 4xx status. A malformed JWT
+  // whose base64url segments are not JSON can instead surface from getClaims()
+  // as a SyntaxError before Supabase wraps it, so treat that as unauthenticated too.
+  if (error instanceof SyntaxError) return true;
   if (!error || typeof error !== "object" || !("status" in error)) return false;
 
   const status = (error as { status?: unknown }).status;
@@ -58,14 +62,19 @@ async function createDefaultDependencies(): Promise<OrganizationContextDependenc
 
   return {
     async getAuthenticatedUserId() {
-      const { data, error } = await supabase.auth.getClaims();
-      if (error) {
+      try {
+        const { data, error } = await supabase.auth.getClaims();
+        if (error) {
+          if (isAuthenticationClaimsError(error)) return null;
+          throw error;
+        }
+
+        const userId = data?.claims?.sub;
+        return typeof userId === "string" && userId.length > 0 ? userId : null;
+      } catch (error) {
         if (isAuthenticationClaimsError(error)) return null;
         throw error;
       }
-
-      const userId = data?.claims?.sub;
-      return typeof userId === "string" && userId.length > 0 ? userId : null;
     },
 
     async listMemberships(userId) {
