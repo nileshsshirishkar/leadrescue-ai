@@ -34,6 +34,10 @@ describe("organization context", () => {
     expect(isAuthenticationClaimsError(new SyntaxError("Unexpected token"))).toBe(true);
   });
 
+  it("classifies malformed JWT UTF-8 decode errors as authentication failures", () => {
+    expect(isAuthenticationClaimsError(new Error("Invalid UTF-8 sequence"))).toBe(true);
+  });
+
   it("classifies Supabase 4xx auth errors as authentication failures", () => {
     expect(isAuthenticationClaimsError({ status: 400 })).toBe(true);
     expect(isAuthenticationClaimsError({ status: 401 })).toBe(true);
