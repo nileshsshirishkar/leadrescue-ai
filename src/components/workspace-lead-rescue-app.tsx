@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LeadRescueApp } from "@/components/lead-rescue-app";
-import { importCsvRows } from "@/lib/csv-import-client";
+import { importCsvRows, WORKSPACE_CHANGED_EVENT } from "@/lib/csv-import-client";
 import { leadArraySchema } from "@/lib/schemas";
 import { fetchWorkspaceSnapshot, WorkspaceRequestError } from "@/lib/workspace-client";
 import type { Lead } from "@/lib/types";
 
 const ACTIVE_CACHE_KEY = "leadrescue-phase1-leads";
+const ACTIVE_CACHE_SERVER_MARKER = "leadrescue-phase1-leads-server-cache";
 const LEGACY_ARCHIVE_KEY = "leadrescue-phase1-legacy-leads";
 const LEGACY_DISMISSED_KEY = "leadrescue-phase1-legacy-dismissed";
-export const WORKSPACE_CHANGED_EVENT = "leadrescue:workspace-changed";
 
 function readLegacyLeads(): Lead[] {
   try {
@@ -19,6 +19,8 @@ function readLegacyLeads(): Lead[] {
       const parsed = leadArraySchema.safeParse(JSON.parse(archived));
       return parsed.success ? parsed.data : [];
     }
+
+    if (window.localStorage.getItem(ACTIVE_CACHE_SERVER_MARKER) === "1") return [];
 
     const current = window.localStorage.getItem(ACTIVE_CACHE_KEY);
     if (!current) return [];
@@ -35,6 +37,7 @@ function readLegacyLeads(): Lead[] {
 function writeWorkspaceCache(leads: Lead[]) {
   try {
     window.localStorage.setItem(ACTIVE_CACHE_KEY, JSON.stringify(leads));
+    window.localStorage.setItem(ACTIVE_CACHE_SERVER_MARKER, "1");
   } catch {
     // The authenticated server workspace remains authoritative if browser storage is unavailable.
   }
