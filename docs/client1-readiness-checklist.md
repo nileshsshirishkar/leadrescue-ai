@@ -24,6 +24,7 @@
 - [x] Offboarding/deletion procedure drafted.
 - [x] Integration register created with Dev/Preview/Production distinctions.
 - [x] Commercial decision sheet created without inventing price/trial/refund/SLA terms.
+- [x] Supabase Pro/leaked-password sequencing approved: may remain pending during Dev/Preview completion, but must be purchased/enabled/verified before Client #1 real lead data is accepted.
 - [ ] Client #1 permitted-data boundary explicitly approved.
 - [ ] Live-data retention after termination explicitly approved.
 - [ ] Export window explicitly approved.
@@ -41,8 +42,8 @@
 
 - [ ] **Vercel commercial plan:** current connected Vercel team is Hobby. Current Vercel Terms say Hobby is for personal/non-commercial use only. Upgrade is required before Client #1 commercial hosting and is a separate paid-plan approval.
 - [ ] **Vercel data setting:** current Vercel Terms state Hobby/trial-Pro content may be used for model training subject to the applicable account setting. Reverify and set the commercial account/data preference before real client content.
-- [ ] **Supabase leaked-password protection:** current Security Advisor reports it disabled. Supabase currently makes the feature available on Pro and above.
-- [ ] **Supabase backup plan:** current Production design must use a plan with an approved backup policy. Current Supabase docs provide daily backups on Pro/Team/Enterprise; Pro exposes seven days. Free-tier Dev requires manual exports and is not sufficient evidence for Client #1 recovery.
+- [ ] **Supabase leaked-password protection:** current Security Advisor reports it disabled. **APPROVED TIMING:** keep this pending while the full product is completed and validated in Dev/Preview. At Client #1 onboarding, before accepting real commercial lead data, purchase Supabase Pro, enable leaked-password protection, re-run Security Advisor, and verify the warning is cleared.
+- [ ] **Supabase backup plan:** current Production design must use a plan with an approved backup policy. The paid-plan purchase can remain pending during Dev/Preview completion, but the Production/Client #1 gate must establish and verify the approved backup capability before real lead data is accepted.
 - [ ] **Repository visibility:** repository is currently public. Existing approved policy requires a re-review before materially sensitive commercial code/assets or real client data expand. Current GitHub docs state rulesets/protected branches for private repositories require GitHub Pro/Team/Enterprise rather than GitHub Free.
 
 ## D. Milestone 14, separate Production environment gate
@@ -64,8 +65,8 @@ These are intentionally **not** completed by Milestone 13 documentation:
 ## E. Milestone 15, separate paid-plan/security gate
 
 - [ ] Approve and purchase commercial Vercel plan.
-- [ ] Approve and purchase appropriate Supabase plan.
-- [ ] Enable and verify leaked-password protection.
+- [ ] At Client #1 onboarding, approve and purchase Supabase Pro before real client lead data is accepted.
+- [ ] Enable and verify leaked-password protection immediately after the Supabase Pro upgrade and confirm the Security Advisor warning is cleared.
 - [ ] Confirm automatic backup retention and whether PITR is actually justified by approved RPO.
 - [ ] Reverify Vercel rollback, monitoring and rate-limit features on the selected plan.
 - [ ] Re-run Supabase Security Advisor and resolve all Client #1 blocking findings.
@@ -73,5 +74,7 @@ These are intentionally **not** completed by Milestone 13 documentation:
 ## F. Go / no-go rule
 
 **Client #1 remains NO-GO for real commercial lead data** until all approved Milestone 13 decisions are closed and the separate Milestone 14-15 Production/paid-plan controls pass.
+
+The approved Supabase timing means product development may continue without purchasing Pro now. It does **not** permit onboarding Client #1 real data before Supabase Pro and leaked-password protection have been enabled and verified.
 
 No Preview, Dev, documentation or vendor-plan research may be presented as Production proof.
