@@ -24,27 +24,37 @@
 - [x] Offboarding/deletion procedure drafted.
 - [x] Integration register created with Dev/Preview/Production distinctions.
 - [x] Commercial decision sheet created without inventing price/trial/refund/SLA terms.
+- [x] Client #1 target profile approved: one small, non-regulated service-business pilot with a small named user set.
+- [x] Permitted-data boundary approved: ordinary business lead/contact/follow-up data only; unnecessary sensitive categories excluded.
+- [x] Offboarding policy approved: 14-day export window and live tenant-data deletion within 30 days after a verified termination/deletion request, with backups aging out according to actual Production retention.
+- [x] Initial backup/RPO policy approved: Supabase Pro daily backups at Client #1 onboarding, internal RPO target up to 24 hours, no published RTO/recovery SLA before restore testing.
+- [x] Monitoring architecture approved: founder primary incident owner, Production Vercel observability plus Supabase health/security/backup visibility.
+- [x] Durable rate-limit architecture approved; numeric thresholds intentionally deferred until paid-plan selection and load/abuse testing.
+- [x] Support model approved: founder-managed written-channel support on a reasonable-efforts basis during stated business hours, without 24/7 or guaranteed-response/restoration SLA.
+- [x] OpenAI decision approved: optional enhancement remains disabled for the first live Client #1 onboarding until processor/privacy wording, current data controls and Production configuration are approved and verified.
 - [x] Supabase Pro/leaked-password sequencing approved: may remain pending during Dev/Preview completion, but must be purchased/enabled/verified before Client #1 real lead data is accepted.
-- [ ] Client #1 permitted-data boundary explicitly approved.
-- [ ] Live-data retention after termination explicitly approved.
-- [ ] Export window explicitly approved.
-- [ ] Backup RPO and RTO explicitly approved.
-- [ ] Monitoring/alert ownership and notification path approved.
-- [ ] Durable rate-limit architecture and numeric thresholds approved after commercial hosting plan is selected.
-- [ ] Incident secondary/escalation contact identified.
-- [ ] Support channel, support hours and non-SLA response wording approved.
-- [ ] Price, billing period, pilot/trial, cancellation and refund/credit terms approved.
-- [ ] OpenAI enhancement enabled/disabled decision made for Client #1.
-- [ ] Legal/privacy/DPA jurisdiction review path confirmed.
-- [ ] Repository visibility decision re-opened and resolved for commercial expansion.
+- [x] Repository timing approved: visibility may remain unchanged during Dev/Preview, but private-repository/paid-GitHub-plan decision must be resolved before real Client #1 data or materially sensitive commercial assets are introduced.
+- [x] Vercel timing approved: current Hobby remains Dev/Preview only; commercial paid plan must be active before Client #1 commercial hosting.
+- [x] Legal/privacy review path approved: jurisdiction-specific contract/privacy/DPA review occurs once the actual seller entity and Client #1 jurisdiction are known.
 
-## C. Current commercial blockers confirmed from live/vendor evidence
+### Approved deferred details, to close before Client #1 onboarding or offer
 
-- [ ] **Vercel commercial plan:** current connected Vercel team is Hobby. Current Vercel Terms say Hobby is for personal/non-commercial use only. Upgrade is required before Client #1 commercial hosting and is a separate paid-plan approval.
-- [ ] **Vercel data setting:** current Vercel Terms state Hobby/trial-Pro content may be used for model training subject to the applicable account setting. Reverify and set the commercial account/data preference before real client content.
-- [ ] **Supabase leaked-password protection:** current Security Advisor reports it disabled. **APPROVED TIMING:** keep this pending while the full product is completed and validated in Dev/Preview. At Client #1 onboarding, before accepting real commercial lead data, purchase Supabase Pro, enable leaked-password protection, re-run Security Advisor, and verify the warning is cleared.
-- [ ] **Supabase backup plan:** current Production design must use a plan with an approved backup policy. The paid-plan purchase can remain pending during Dev/Preview completion, but the Production/Client #1 gate must establish and verify the approved backup capability before real lead data is accepted.
-- [ ] **Repository visibility:** repository is currently public. Existing approved policy requires a re-review before materially sensitive commercial code/assets or real client data expand. Current GitHub docs state rulesets/protected branches for private repositories require GitHub Pro/Team/Enterprise rather than GitHub Free.
+- [ ] Identify one secondary human incident escalation contact.
+- [ ] Select exact written support channel and business hours.
+- [ ] Set numeric rate-limit thresholds after commercial hosting selection and load/abuse testing.
+- [ ] Select price, billing amount/period, pilot duration, cancellation notice and refund/credit terms after the actual target client is selected.
+- [ ] Complete jurisdiction-specific privacy/contract/DPA wording after the actual seller/client jurisdiction is known.
+- [ ] Re-resolve repository private-plan/visibility action at the commercial-expansion gate.
+
+These are explicitly deferred execution details under the approved package. They do not block continued Dev/Preview work or closing Milestone 13 governance documentation.
+
+## C. Current Client #1 commercial/Production blockers
+
+- [ ] **Vercel commercial plan:** current connected Vercel team is Hobby. Upgrade to an approved commercial plan is required before Client #1 commercial hosting.
+- [ ] **Vercel account/data settings:** reverify relevant commercial account/data settings before real client content.
+- [ ] **Supabase Pro and leaked-password protection:** at Client #1 onboarding, before accepting real commercial lead data, purchase Supabase Pro, enable leaked-password protection, re-run Security Advisor and verify the warning is cleared.
+- [ ] **Supabase backup plan:** verify the approved Production backup configuration and restore path before real lead data is accepted.
+- [ ] **Repository visibility:** resolve the private-repository/paid-GitHub-plan decision before real client data or materially sensitive commercial assets are introduced.
 
 ## D. Milestone 14, separate Production environment gate
 
@@ -65,16 +75,16 @@ These are intentionally **not** completed by Milestone 13 documentation:
 ## E. Milestone 15, separate paid-plan/security gate
 
 - [ ] Approve and purchase commercial Vercel plan.
-- [ ] At Client #1 onboarding, approve and purchase Supabase Pro before real client lead data is accepted.
+- [ ] At Client #1 onboarding, purchase Supabase Pro before real client lead data is accepted.
 - [ ] Enable and verify leaked-password protection immediately after the Supabase Pro upgrade and confirm the Security Advisor warning is cleared.
-- [ ] Confirm automatic backup retention and whether PITR is actually justified by approved RPO.
+- [ ] Confirm automatic backup retention and whether PITR is actually justified by the approved RPO.
 - [ ] Reverify Vercel rollback, monitoring and rate-limit features on the selected plan.
 - [ ] Re-run Supabase Security Advisor and resolve all Client #1 blocking findings.
 
 ## F. Go / no-go rule
 
-**Client #1 remains NO-GO for real commercial lead data** until all approved Milestone 13 decisions are closed and the separate Milestone 14-15 Production/paid-plan controls pass.
+**Client #1 remains NO-GO for real commercial lead data** until the separate Production, paid-plan, security, legal/privacy and acceptance gates pass.
 
-The approved Supabase timing means product development may continue without purchasing Pro now. It does **not** permit onboarding Client #1 real data before Supabase Pro and leaked-password protection have been enabled and verified.
+The approved policy package closes Milestone 13 operating-policy architecture. It does not make Dev/Preview into Production, authorize real client data, purchase paid plans, change repository visibility or approve a `main` promotion.
 
 No Preview, Dev, documentation or vendor-plan research may be presented as Production proof.
