@@ -88,14 +88,17 @@ export function WorkspaceLeadRescueApp() {
   }, []);
 
   useEffect(() => {
-    const legacy = readLegacyLeads();
-    setLegacyLeads(legacy);
-    try {
-      setLegacyDismissed(window.localStorage.getItem(LEGACY_DISMISSED_KEY) === "1");
-    } catch {
-      setLegacyDismissed(true);
-    }
-    void refreshWorkspace();
+    const timer = window.setTimeout(() => {
+      const legacy = readLegacyLeads();
+      setLegacyLeads(legacy);
+      try {
+        setLegacyDismissed(window.localStorage.getItem(LEGACY_DISMISSED_KEY) === "1");
+      } catch {
+        setLegacyDismissed(true);
+      }
+      void refreshWorkspace();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [refreshWorkspace]);
 
   useEffect(() => {
