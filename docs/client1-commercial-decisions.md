@@ -14,6 +14,7 @@
 - WhatsApp, booking and Voice AI remain later layers unless priority changes.
 - Meta/Google native connectors and provider feedback are not part of Client #1 unless separately approved and implemented.
 - No customer result, ROI, revenue, uptime SLA or integration claim may be made without evidence.
+- **Supabase Pro / leaked-password-protection sequencing:** this may remain pending while the product is completed and validated in Dev/Preview. At Client #1 onboarding, before LeadRescue accepts that client's real commercial lead data, purchase the appropriate Supabase Pro plan, enable leaked-password protection, re-run the Supabase Security Advisor, and verify the control is active. This is an approved timing decision, not a waiver of the Production security gate.
 
 ## 2. Terms that still require explicit approval
 
@@ -127,10 +128,11 @@ Client #1 must remain **NO-GO for real commercial data** until:
 2. data/security/privacy architecture is approved;
 3. incident, deletion, monitoring, rate-limit and rollback processes are accepted;
 4. Milestone 14 creates and validates a separate Production Supabase environment;
-5. Milestone 15 upgrades Vercel/Supabase plans as needed for commercial use;
-6. Production Auth/tenant acceptance, backup restore and rollback tests pass;
-7. repository visibility is re-decided for commercial expansion;
-8. the client-facing privacy/contract wording is reviewed for the actual jurisdiction.
+5. at Client #1 onboarding, before real client data is accepted, the approved Supabase Pro plan is purchased and leaked-password protection is enabled and verified;
+6. Vercel is on an approved commercial plan before commercial hosting;
+7. Production Auth/tenant acceptance, backup restore and rollback tests pass;
+8. repository visibility is re-decided for commercial expansion;
+9. the client-facing privacy/contract wording is reviewed for the actual jurisdiction.
 
 ## 9. Approval checklist
 
@@ -148,3 +150,5 @@ The user should explicitly approve or replace these items before this file becom
 - [ ] Export window
 - [ ] OpenAI enhancement enabled or disabled for Client #1
 - [ ] Contract/DPA legal review path
+
+**Approved timing decision:** Supabase Pro purchase and leaked-password protection may remain pending through Dev/Preview completion, but must be completed and verified before Client #1 real lead data is accepted.
