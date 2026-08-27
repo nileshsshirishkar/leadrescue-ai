@@ -1,6 +1,6 @@
 # LeadRescue AI Milestone 14 Production Auth Preflight
 
-**Status:** VERIFIED PRE-CONFIGURATION EVIDENCE. No hosted Auth setting, Auth user, Vercel environment variable, `main` branch, or public Production deployment was changed by this preflight.
+**Status:** VERIFIED PRE-CONFIGURATION EVIDENCE WITH QA-IDENTITY EXCEPTION. No Vercel environment variable, `main` branch, or public Production deployment has been changed by this Auth preflight.
 
 ## Current Production Supabase state
 
@@ -11,14 +11,26 @@ Production project remains:
 - region: `ap-south-1` / South Asia (Mumbai)
 - status: `ACTIVE_HEALTHY`
 
-Direct database counts before fictional Auth provisioning:
+Current verified Auth state:
 
-- `auth.users`: 0
-- `auth.identities`: 0
-- `public.profiles`: 0
-- `public.organization_members`: 0
+- exactly two founder-created email/password Auth users exist;
+- both are email-confirmed;
+- public self-signup is disabled;
+- anonymous sign-ins are disabled;
+- email/password provider remains enabled;
+- public `profiles`, `organizations`, and `organization_members` are still empty before tenant fixture provisioning.
 
-No QA user or client identity exists yet.
+## Accepted QA identity exception
+
+The two current QA Auth users use owner-controlled real email addresses rather than reserved fictional-domain addresses. The user explicitly chose to continue with these same QA identities because the same pattern was used in earlier validation.
+
+This is accepted only as a temporary Production-validation exception with these hard conditions:
+
+1. treat both accounts as QA/test identities only, never as customer evidence or real client accounts;
+2. do not add real client data to their tenant fixtures;
+3. use fictional organization, contact, lead, task, event and note data during acceptance;
+4. remove both QA Auth users and all linked QA tenant fixtures before Client #1 real commercial Production data is onboarded, not merely after the site is publicly reachable;
+5. verify deletion/offboarding and zero QA residue as a Client #1 gate.
 
 ## Verified application Auth behavior on `develop`
 
@@ -30,40 +42,24 @@ Current LeadRescue code uses email/password sign-in only for the pilot login pat
 - `src/lib/supabase/proxy.ts` refreshes/validates the Supabase SSR session with `auth.getClaims()`.
 - `src/lib/supabase/config.ts` requires only the Production project's public URL and publishable key for normal application Auth. No service-role/secret key is required by the browser login path.
 
-Therefore the intended Production Auth mode for this milestone is founder-provisioned permanent email/password users, with public signup disabled at the hosted Supabase Auth layer.
-
-## Current official Supabase configuration boundary
-
-Supabase's hosted Auth setting **Allow new users to sign up** controls whether new users can self-register. When disabled, existing users can still sign in. This matches LeadRescue's approved first-10-client founder-provisioning policy.
-
-Do not disable the email provider itself: LeadRescue relies on email/password sign-in. The global signup control should be disabled while email authentication remains enabled.
-
-Supabase admin user creation/invitation is a privileged operation and must be performed from the Dashboard or from a trusted server using a project secret key. A secret key must never be exposed to the browser or committed to Git.
+Therefore the intended Production Auth mode remains founder-provisioned permanent email/password users with public signup disabled at the hosted Supabase Auth layer.
 
 ## Vercel/GitHub relationship verified
 
 The existing Vercel project is `leadrescue-ai` under team `LeadRescue AI` and is already connected to exact GitHub repository `nileshsshirishkar/leadrescue-ai`.
 
-Direct deployment metadata confirms GitHub pushes create Preview deployments for `develop` and `ops/production-environment`. The latest PR #28 evidence commit also produced a READY Preview deployment.
+Direct deployment metadata confirms GitHub pushes create Preview deployments for `develop` and `ops/production-environment`.
 
 Do not create a duplicate Vercel project and do not connect Supabase's optional GitHub integration. Existing GitHub -> Vercel Preview deployment behavior is already active.
 
 The existing Preview environment must not be silently repointed from Dev Supabase to Production Supabase because it is also used for Dev/PR validation. Production Supabase acceptance should use an explicitly isolated configuration path rather than overwriting shared Preview environment variables.
 
-## Hosted Auth settings still requiring direct verification/configuration
+## Current limitation discovered during fixture provisioning
 
-The current connector does not expose Supabase hosted Auth-config read/write actions. The database itself also does not establish the hosted `disable_signup` setting.
+The connected Supabase SQL execution path currently rejects INSERT statements with `cannot execute INSERT in a read-only transaction`. Reads continue to work. This is not being bypassed or treated as evidence that Production itself is intentionally read-only.
 
-Before provisioning fictional Production users, directly verify in the Supabase Dashboard for **LeadRescue AI Production**:
-
-1. email/password authentication remains enabled;
-2. **Allow new users to sign up** is OFF;
-3. anonymous sign-ins remain OFF;
-4. do not set a guessed Site URL or redirect URL yet. The exact application acceptance URL must be determined first;
-5. do not connect Supabase GitHub/Vercel integrations from the Supabase dashboard.
+Because the connector cannot currently perform fixture writes, tenant fixture provisioning must use a supported read-write administrative path, such as the Supabase Dashboard SQL Editor, after exact SQL is reviewed. Do not use a schema migration to hide QA fixture data, and do not commit QA identities or credentials to Git.
 
 ## Next controlled step
 
-After the hosted signup setting is verified OFF, create exactly two fictional Production QA email/password users through the Supabase Dashboard Auth user administration path, using no real client data. Then record their generated UUIDs and create corresponding fictional profiles, organizations and memberships through controlled database administration for two-tenant acceptance.
-
-Do not manually insert rows into `auth.users` with SQL. Supabase Auth users must be created through supported Auth administration paths.
+Create two fictional Production organizations, matching profiles and owner memberships for the two existing QA Auth UUIDs through a controlled read-write administrative transaction. Then verify row counts and tenant mapping before creating fictional contacts/leads/tasks for two-tenant acceptance.
