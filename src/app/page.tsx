@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { FollowUpReminders } from "@/components/follow-up-reminders";
-import { LeadRescueApp } from "@/components/lead-rescue-app";
+import { WorkspaceLeadRescueApp } from "@/components/workspace-lead-rescue-app";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 import { resolveOrganizationAccessContext } from "@/lib/supabase/organization-context";
 
@@ -62,7 +62,7 @@ export default async function Home() {
       <div className="fixed right-4 top-4 z-50">
         <SignOutButton />
       </div>
-      <LeadRescueApp />
+      <WorkspaceLeadRescueApp />
       <div className="bg-[#f5f8fc] px-4 pb-10 lg:pl-[260px] lg:pr-6">
         <div className="mx-auto max-w-[1600px]">
           <FollowUpReminders />

@@ -4,6 +4,7 @@ import type { Lead } from "@/lib/types";
 const CSV_IMPORT_BATCH_SIZE = 100;
 const PENDING_IMPORT_PREFIX = "leadrescue-csv-import:";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const WORKSPACE_CHANGED_EVENT = "leadrescue:workspace-changed";
 
 export interface CsvImportClientRow {
   rowNumber: number;
@@ -75,6 +76,11 @@ async function readErrorMessage(response: Response): Promise<string> {
     // Fall through to the sanitized generic message.
   }
   return "CSV import could not be completed.";
+}
+
+function notifyWorkspaceChanged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(WORKSPACE_CHANGED_EVENT));
 }
 
 export function createImportId(): string {
@@ -224,6 +230,10 @@ export async function importCsvRows(
 
   if (output.errors === 0 && retryStorage && retryFingerprint) {
     clearPendingImportId(retryStorage, retryFingerprint);
+  }
+
+  if (output.created > 0 || output.existing > 0) {
+    notifyWorkspaceChanged();
   }
 
   return output;
