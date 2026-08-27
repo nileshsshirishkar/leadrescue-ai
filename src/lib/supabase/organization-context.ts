@@ -46,16 +46,42 @@ export interface OrganizationContextDependencies {
   listOrganizations(organizationId: string): Promise<unknown>;
 }
 
+function isMalformedJwtDecodeError(error: unknown): boolean {
+  if (error instanceof SyntaxError) return true;
+
+  // auth-js 2.112.3 decodes JWT header/payload base64url bytes before JSON.parse.
+  // Malformed bytes can fail in the UTF-8 decoder as a plain Error rather than
+  // an AuthInvalidJwtError. Keep this deliberately narrow so network and
+  // infrastructure failures still map to unavailable instead of authentication.
+  return error instanceof Error && error.message === "Invalid UTF-8 sequence";
+}
+
+export function isAuthenticationClaimsError(error: unknown): boolean {
+  if (isMalformedJwtDecodeError(error)) return true;
+  if (!error || typeof error !== "object" || !("status" in error)) return false;
+
+  const status = (error as { status?: unknown }).status;
+  return typeof status === "number" && status >= 400 && status < 500;
+}
+
 async function createDefaultDependencies(): Promise<OrganizationContextDependencies> {
   const supabase = await createClient();
 
   return {
     async getAuthenticatedUserId() {
-      const { data, error } = await supabase.auth.getClaims();
-      if (error) throw error;
+      try {
+        const { data, error } = await supabase.auth.getClaims();
+        if (error) {
+          if (isAuthenticationClaimsError(error)) return null;
+          throw error;
+        }
 
-      const userId = data?.claims?.sub;
-      return typeof userId === "string" && userId.length > 0 ? userId : null;
+        const userId = data?.claims?.sub;
+        return typeof userId === "string" && userId.length > 0 ? userId : null;
+      } catch (error) {
+        if (isAuthenticationClaimsError(error)) return null;
+        throw error;
+      }
     },
 
     async listMemberships(userId) {
