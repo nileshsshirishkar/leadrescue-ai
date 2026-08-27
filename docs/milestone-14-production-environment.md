@@ -1,30 +1,24 @@
 # LeadRescue AI Milestone 14 Production Environment Runbook
 
-**Status:** PREPARATION ONLY. This document defines the controlled Production-environment sequence. It does not itself create Production infrastructure, change `main`, purchase plans, expose real client data, or authorize commercial use.
+**Status:** PREPARATION / CORRECTION REQUIRED. This document defines the controlled Production-environment sequence. It does not itself change `main`, expose real client data, or authorize commercial use.
 
 ## 1. Current verified starting point
 
 - Authoritative repository: `nileshsshirishkar/leadrescue-ai`.
 - `develop` contains work through merged PR #27 / Milestone 13.
 - `main` remains on the older public Phase 2 Production state and has not received the Supabase tenant-workspace milestones.
-- Current hosted Supabase project is `LeadRescue AI Dev` in `ap-south-1`; there is no separate LeadRescue Production Supabase project visible in the connected account yet.
+- Dev Supabase project: `LeadRescue AI Dev`, ref `vzlltqutwsnnjzepyogj`, region `ap-south-1` (Mumbai).
+- Production Supabase organization now exists: `LeadRescue AI Production`, organization id `nmtpmqgbtgjmwheecngb`, Free plan.
+- A new project was created in that organization with ref `mqqhiliqobcazzgykqxs`, but direct Supabase verification shows its current project name is `nileshsshirishkar's Project` and its region is `ap-northeast-2` (Seoul), not the intended `LeadRescue AI Production` in `ap-south-1`.
+- No LeadRescue migrations have been applied to that project by this milestone workflow.
 - Current Vercel team remains Hobby and must not be treated as approved Client #1 commercial hosting.
 - Supabase leaked-password protection remains intentionally deferred until the approved Client #1 onboarding / Pro-plan gate.
 
 ## 2. Official production guidance reverified for this milestone
 
-Current Supabase documentation recommends:
+Current Supabase documentation recommends separate environments, version-controlled migrations, Production checklist/security review, exact Production Auth URLs, and controlled migration deployment. Development seed data and destructive remote reset operations must not be used on Production.
 
-- separate environments for local/staging/Production workflows;
-- version-controlled migrations as the Production schema-change mechanism;
-- running the Production Checklist before launch;
-- reviewing Security Advisor and RLS;
-- setting the exact Production Site URL / redirect URLs for Auth;
-- using `supabase db push --dry-run` before applying remote migrations;
-- never using destructive remote reset operations on Production;
-- never using development seed data on Production.
-
-The Production project must be created cleanly and receive schema only from the canonical repository migrations. Do not clone Dev rows or QA fixtures into Production.
+Supabase also documents that a project's region is bound at the infrastructure level. Changing region requires creating a new project in the desired region and migrating to it. Because this project is still empty, the safest correction is to replace it before any LeadRescue migration or configuration is applied.
 
 ## 3. Canonical migration source
 
@@ -40,35 +34,39 @@ Current repository migration files on `develop`:
 6. `20260824223000_create_lead_workflow_update_function.sql`
 7. `20260825051000_add_organization_access_status.sql`
 
-Current hosted Dev also reports seven migrations, but three hosted migration versions differ because those changes were applied through the hosted migration tooling at different timestamps. This is migration-history drift, not evidence that Production should copy Dev history. A new Production project should be built from the repository's version-controlled migration files and then verified against the expected schema/functions/policies.
+Hosted Dev also reports seven migrations, but three hosted migration versions differ because those changes were applied through hosted tooling at different timestamps. Production must therefore be built from the repository's version-controlled migration files and verified against the expected schema/functions/policies.
 
-## 4. Production project creation gate
+## 4. Production project correction gate
 
-Creating a new Supabase project is a material Production-environment action and may have a cost depending on the selected organization/plan.
+The currently created project `mqqhiliqobcazzgykqxs` must **not** receive LeadRescue migrations because it is in Seoul (`ap-northeast-2`) rather than the approved Mumbai region (`ap-south-1`).
 
-Before creation:
+Required correction:
 
-1. user explicitly selects the Supabase organization;
-2. query the current project-creation cost for that organization;
-3. present the cost/recurrence to the user;
-4. obtain the required cost confirmation;
-5. create **`LeadRescue AI Production`** in `ap-south-1` unless the user explicitly chooses another approved region;
-6. wait until the project is `ACTIVE_HEALTHY` before any migration.
+1. do not add data, users, migrations, Auth configuration, Vercel variables or secrets to `mqqhiliqobcazzgykqxs`;
+2. delete that empty project from the Supabase dashboard, or otherwise retire it before reuse;
+3. keep the `LeadRescue AI Production` organization;
+4. create a replacement project named exactly `LeadRescue AI Production`;
+5. choose **South Asia (Mumbai) / `ap-south-1`** explicitly, not a generic Asia-Pacific selection;
+6. keep Data API enabled;
+7. disable automatic new-table exposure;
+8. enable automatic RLS;
+9. leave GitHub integration disconnected for this controlled Production setup;
+10. verify the replacement project identity, organization, region and healthy status before any migration.
 
-No Production project should be created by guessing the organization or cost.
+No migration is authorized until that verification passes.
 
 ## 5. Clean migration sequence
 
-After the Production project is healthy:
+After the corrected Production project is `ACTIVE_HEALTHY`:
 
-1. record Production project ref and region in the controlled evidence file, never credentials;
-2. verify the target is the new Production project before every schema mutation;
-3. apply the seven canonical repository migrations in order, or use an equivalent controlled `db push` flow that preserves the repository versions;
+1. record Production project ref and region, never credentials;
+2. verify the Production project identity before every schema mutation;
+3. apply the seven canonical repository migrations in order using the controlled Supabase migration path;
 4. do not include Dev seed data or QA fixtures;
 5. list remote migration history and verify all expected versions;
-6. verify core tables, functions, grants, foreign keys, RLS-enabled state and key policies;
+6. verify tables, functions, grants, foreign keys, RLS state and key policies;
 7. run Security Advisor and record findings;
-8. run the Production-compatible tenant pgTAP/acceptance tests only with fictional data and clean all fixtures afterward.
+8. run Production-compatible tenant acceptance tests only with fictional data and clean fixtures afterward.
 
 ## 6. Production Auth configuration gate
 
@@ -77,17 +75,14 @@ Before connecting a Production Vercel deployment:
 - public self-signup remains disabled;
 - founder provisioning remains the first-10-client model;
 - configure the exact Production Site URL and approved redirect URLs;
-- do not use broad Preview wildcards as the Production Site URL;
-- verify password sign-in, wrong-password rejection, protected routes, sign-out, normal refresh, forced expired-access-token refresh and malformed/invalid-session rejection;
+- verify password sign-in, wrong-password rejection, protected routes, sign-out, normal refresh, expired-token refresh and malformed/invalid-session rejection;
 - keep optional OpenAI enhancement disabled for the first live Client #1 onboarding under the approved Milestone 13 policy.
 
-Auth acceptance must use fictional Production QA users/organizations. Dev users and passwords are not copied into Production.
+Dev users and passwords are not copied into Production.
 
 ## 7. Vercel environment boundary
 
-Do not point current public Production at the new Supabase project yet.
-
-First create/verify the Production Supabase project and schema, then configure the required Production environment variables in Vercel through a separate controlled gate. Preview/Development variables must remain distinct from Production variables.
+Do not point current public Production at the new Supabase project yet. Preview/Development variables must remain distinct from Production variables.
 
 No `main` merge or Production deployment is authorized by this runbook.
 
@@ -98,36 +93,21 @@ Before any real client data:
 - provision two fictional Production organizations and two independent users;
 - verify each user sees only its own workspace/contact details;
 - verify cross-tenant lead reads, creates, updates, tasks and reminders fail closed;
-- verify one-lead create and retry idempotency;
-- verify CSV import retry behavior and row-failure reporting;
+- verify create/import retry idempotency and row-failure reporting;
 - verify status/notes/follow-up transaction and audit event;
 - verify due/overdue/upcoming reminders;
 - verify founder pause/reactivate enforcement server-side and through RLS/database paths;
 - verify signed-out, expired-token and invalid-session behavior;
-- verify deletion/offboarding procedure with fictional data;
+- verify deletion/offboarding with fictional data;
 - verify backup/restore after the approved commercial Supabase plan is active;
-- verify monitoring and rate-limit controls after the approved commercial Vercel plan is active;
-- verify rollback procedure;
+- verify monitoring/rate limits after the approved commercial Vercel plan is active;
+- verify rollback;
 - remove Production QA fixtures or retain only explicitly approved non-production acceptance fixtures.
 
 ## 9. Hard stop conditions
 
-Stop and do not continue if:
-
-- repository does not resolve exactly to `nileshsshirishkar/leadrescue-ai`;
-- Production project identity is ambiguous;
-- migration order/history does not match the canonical repository set;
-- any migration fails;
-- RLS is missing or Security Advisor reveals an unexpected material warning;
-- tenant isolation fails;
-- a request would require copying Dev/real client data into Production;
-- a secret would need to be committed to GitHub or exposed to the browser;
-- a step would change `main` or current public Production without a separate explicit promotion approval.
+Stop if repository identity, Production project identity, migration history, RLS, tenant isolation or environment separation is ambiguous or incorrect. Never copy Dev/real-client data into Production, expose secrets, or change `main`/public Production without the separate explicit promotion gate.
 
 ## 10. Current next action
 
-The connected Supabase account currently exposes one organization through the existing Dev project: `tksocpsdgotwmjeydhbc`. Supabase project creation tooling requires the user to explicitly choose which organization should own the new project, and it requires a live cost check/confirmation before creation.
-
-Therefore the next executable Production action is:
-
-**User selects the Supabase organization for `LeadRescue AI Production`; then query and confirm the current project-creation cost before creating the project.**
+**Delete/retire the empty Seoul project `mqqhiliqobcazzgykqxs` and recreate `LeadRescue AI Production` explicitly in South Asia (Mumbai), `ap-south-1`. Then verify the new project ref before any migration.**
