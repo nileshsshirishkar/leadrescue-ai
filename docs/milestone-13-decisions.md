@@ -4,6 +4,28 @@
 
 ## Approved decisions
 
+### Client #1 policy package
+
+**APPROVED 2026-08-28**
+
+The Client #1 policy package in `docs/client1-policy-approval-package.md` is approved as the default operating policy for the first controlled commercial pilot, subject to the separate Production, paid-plan and legal-verification gates recorded below.
+
+Approved defaults:
+
+1. **Target profile:** first pilot should be one small, non-regulated service business with a straightforward lead-follow-up workflow and a small named user set.
+2. **Permitted data:** ordinary business lead/contact/follow-up data only. Passwords, authentication secrets, payment/banking credentials, government identity-document numbers, medical/clinical records and other highly sensitive data unnecessary for lead follow-up are excluded unless a later assessment explicitly approves them.
+3. **Offboarding:** pause access first; offer a 14-day export window; delete the tenant's live application data within 30 days of a verified termination/deletion request after the export window and request verification. Historical backups age out according to the actual approved Production backup retention rather than an instant-erasure promise.
+4. **Backup/RPO:** start Client #1 with Supabase Pro daily backups rather than PITR by default. The initial internal RPO target is up to 24 hours. Do not publish an RTO or recovery SLA before the Production restore test records actual recovery evidence. Reassess PITR if real usage/value later justifies a tighter RPO.
+5. **Incident ownership:** founder is the primary incident owner for clients 1-10. One secondary human escalation contact must be identified before Client #1 goes live.
+6. **Monitoring:** use the approved Production Vercel observability/runtime-log path plus Supabase health/security/backup visibility. Monitor material 5xx/unavailability, authentication failures, import failures, database unavailability, reminder failures and unusual traffic/rate-limit signals. Client communications state verified facts without inventing recovery times.
+7. **Rate limiting:** use a durable platform/distributed rate-limit mechanism, not a serverless in-memory counter. Prefer trusted authenticated user/server-resolved organization keys where practical, use stricter controls for expensive or abuse-sensitive routes, and return sanitized HTTP 429 responses. Numeric thresholds remain intentionally deferred until the commercial hosting plan is selected and a load/abuse test is run.
+8. **Support model:** founder-managed support through one written, traceable channel on a reasonable-efforts basis during stated business hours. No 24/7 promise, guaranteed response time, restoration SLA or provider-availability guarantee. Exact channel and business hours are selected before Client #1 onboarding.
+9. **OpenAI enhancement:** keep optional OpenAI enhancement disabled for the first live Client #1 onboarding. It may be enabled later only after customer-facing processor/privacy wording is approved, current OpenAI data controls are reverified, Production configuration is tested and the client is informed that the feature is optional and human-reviewed. Deterministic LeadRescue operation must remain usable without it.
+10. **Repository timing:** keep current repository visibility unchanged while finishing Dev/Preview. Re-resolve the private-repository/paid-GitHub-plan decision before real Client #1 data or materially sensitive commercial assets are introduced. Secrets and client data must never be committed regardless of visibility.
+11. **Vercel paid-plan timing:** defer purchase while current work remains Dev/Preview, but activate an approved commercial Vercel plan before Client #1 commercial hosting begins.
+12. **Commercial terms timing:** price, billing amount/period, pilot duration, cancellation and refund/credit details remain a separate commercial-offer decision after the actual target client is selected. Existing first-10-client boundaries remain: external/manual billing, no Stripe/in-app subscription before 10 clients unless reversed, and no ROI/revenue/uptime/conversion guarantees.
+13. **Legal/privacy review path:** before Client #1 contract/privacy wording is finalized, identify the actual seller/contracting entity and Client #1 jurisdiction, determine controller/processor responsibilities for the real use case, and review privacy/DPA/contract wording for that context. Only processors actually enabled in Production may be represented as live.
+
 ### Supabase Pro and leaked-password protection timing
 
 **APPROVED 2026-08-28**
@@ -34,65 +56,28 @@ Current official Supabase documentation states leaked-password protection is ava
 - Meta/Google native connectors and provider feedback are not Client #1 claims unless separately approved, implemented and validated.
 - Human review remains required before customer outreach.
 
-## Current recommendations, not yet approved as commercial commitments
+## Intentionally deferred details, not blockers to continue Dev/Preview
 
-### Monitoring
+These are not unapproved architecture questions. Their timing is explicitly deferred by the approved policy package:
 
-Recommended first-client design:
-
-- founder is primary operational owner;
-- Production Vercel runtime logs/errors and Supabase health are checked daily during the controlled pilot;
-- automated alerting should cover repeated 5xx/application unavailability and other material failure signals before real data goes live;
-- alerts must avoid embedding private lead/contact content;
-- secondary escalation contact/channel remains to be named.
-
-Vercel currently documents Production log filtering by environment, status code and error level. This provides a suitable monitoring evidence source, but exact alert delivery/thresholds remain to be selected after the commercial Vercel plan is chosen.
-
-### Application rate limiting
-
-Recommended architecture:
-
-- use Vercel Firewall/WAF rate limiting or another durable distributed mechanism on the approved commercial plan;
-- key authenticated limits by verified user and/or server-resolved organization, never a browser-supplied organization id;
-- use stricter limits for expensive or abuse-sensitive operations such as AI enhancement and CSV/bulk imports;
-- return sanitized HTTP 429 responses;
-- do not use an in-memory serverless counter as the security boundary.
-
-Current Vercel documentation states firewall rate limiting is available on Pro or Enterprise. Numeric limits remain deliberately unapproved until the Production plan and expected Client #1 usage are known.
-
-### Backup approach
-
-Recommended initial Client #1 baseline is Supabase Pro daily backups rather than purchasing PITR by default. The final RPO/RTO and whether PITR is justified remain explicit policy decisions. A real restore test with fictional Production-like data is mandatory before Client #1.
-
-## Decisions still requiring explicit approval
-
-- Client #1 target profile.
-- Permitted-data boundary.
-- Live-data retention after termination.
-- Export window before deletion.
-- Backup RPO and RTO.
-- Monitoring notification channel and secondary escalation contact.
-- Final rate-limit thresholds after commercial hosting selection.
-- Support channel, support hours and non-SLA response wording.
-- Price and billing period.
-- Pilot/trial duration.
-- Cancellation notice.
-- Refund/credit policy.
-- Optional OpenAI enhancement enabled/disabled for Client #1.
-- Legal/privacy/DPA jurisdiction review path.
-- Repository visibility for commercial expansion.
-- Vercel paid-plan purchase timing.
-- Production Supabase creation and Production promotion.
+- name/identity of the secondary incident escalation contact;
+- exact support channel and business hours;
+- numeric rate-limit thresholds after commercial plan selection and load/abuse testing;
+- exact Vercel/Supabase paid-plan purchase action at the Client #1/Production gate;
+- GitHub private-plan/visibility action at the commercial-expansion gate;
+- price, billing amount/period, pilot duration, cancellation notice and refund/credit terms after the actual target client is selected;
+- jurisdiction-specific legal/privacy/DPA wording after the actual seller/client jurisdiction is known;
+- Production Supabase creation and `main`/Production promotion, which remain separate major gates.
 
 ## Safety boundary
 
 No decision in this file authorizes:
 
 - a Production Supabase project creation;
-- paid-plan purchase;
-- GitHub repository visibility change;
+- paid-plan purchase today;
+- GitHub repository visibility change today;
 - provider integration;
 - billing integration;
 - merge to `main`;
 - Production deployment;
-- use of real Client #1 lead data before all applicable gates pass.
+- use of real Client #1 lead data before all applicable Production, plan, security, legal/privacy and acceptance gates pass.
