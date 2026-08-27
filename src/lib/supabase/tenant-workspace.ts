@@ -3,6 +3,8 @@ import { resolveOrganizationContext } from "@/lib/supabase/organization-context"
 import { createClient } from "@/lib/supabase/server";
 import type { Lead } from "@/lib/types";
 
+const WORKSPACE_LEAD_LIMIT = 5_000;
+
 const contactSchema = z
   .object({
     full_name: z.string().min(1),
@@ -56,7 +58,7 @@ async function createDefaultDependencies(): Promise<TenantWorkspaceReadDependenc
         )
         .eq("organization_id", organizationId)
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(WORKSPACE_LEAD_LIMIT);
 
       if (error) throw error;
       return data ?? [];
