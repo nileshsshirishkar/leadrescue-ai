@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LeadRescueApp } from "@/components/lead-rescue-app";
-import { importCsvRows, WORKSPACE_CHANGED_EVENT } from "@/lib/csv-import-client";
+import {
+  createImportId,
+  importCsvRows,
+  WORKSPACE_CHANGED_EVENT,
+} from "@/lib/csv-import-client";
 import { leadArraySchema } from "@/lib/schemas";
 import { fetchWorkspaceSnapshot, WorkspaceRequestError } from "@/lib/workspace-client";
 import type { Lead } from "@/lib/types";
@@ -11,6 +15,8 @@ const ACTIVE_CACHE_KEY = "leadrescue-phase1-leads";
 const ACTIVE_CACHE_SERVER_MARKER = "leadrescue-phase1-leads-server-cache";
 const LEGACY_ARCHIVE_KEY = "leadrescue-phase1-legacy-leads";
 const LEGACY_DISMISSED_KEY = "leadrescue-phase1-legacy-dismissed";
+const LEGACY_IMPORT_ID_KEY = "leadrescue-phase1-legacy-import-id";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function readLegacyLeads(): Lead[] {
   try {
@@ -40,6 +46,19 @@ function writeWorkspaceCache(leads: Lead[]) {
     window.localStorage.setItem(ACTIVE_CACHE_SERVER_MARKER, "1");
   } catch {
     // The authenticated server workspace remains authoritative if browser storage is unavailable.
+  }
+}
+
+function getOrCreateLegacyImportId(): string {
+  try {
+    const saved = window.localStorage.getItem(LEGACY_IMPORT_ID_KEY);
+    if (saved && UUID_PATTERN.test(saved)) return saved;
+
+    const importId = createImportId();
+    window.localStorage.setItem(LEGACY_IMPORT_ID_KEY, importId);
+    return importId;
+  } catch {
+    return createImportId();
   }
 }
 
@@ -106,13 +125,25 @@ export function WorkspaceLeadRescueApp() {
     setIsMigrating(true);
     setMigrationMessage("");
     try {
+      const importId = getOrCreateLegacyImportId();
       const result = await importCsvRows(
         legacyLeads.map((lead, index) => ({ rowNumber: index + 2, lead })),
+        { importId },
       );
       setMigrationMessage(
         `${result.created} created, ${result.existing} existing, ${result.errors} failed. The shared workspace has been refreshed.`,
       );
       await refreshWorkspace();
+
+      if (result.errors === 0) {
+        try {
+          window.localStorage.setItem(LEGACY_DISMISSED_KEY, "1");
+          window.localStorage.removeItem(LEGACY_IMPORT_ID_KEY);
+        } catch {
+          // Server migration already succeeded. Browser metadata cleanup is best effort only.
+        }
+        setLegacyDismissed(true);
+      }
     } catch (error) {
       setMigrationMessage(error instanceof Error ? error.message : "Legacy migration could not be completed.");
     } finally {
@@ -123,6 +154,7 @@ export function WorkspaceLeadRescueApp() {
   function dismissLegacyImport() {
     try {
       window.localStorage.setItem(LEGACY_DISMISSED_KEY, "1");
+      window.localStorage.removeItem(LEGACY_IMPORT_ID_KEY);
     } catch {
       // Ignore browser-storage failure. No server data is changed.
     }
