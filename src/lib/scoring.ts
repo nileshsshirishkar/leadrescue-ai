@@ -8,7 +8,7 @@ const BUYING_KEYWORDS = [
 const GENERIC_SERVICES = new Set(["", "service", "services", "information", "help"]);
 
 function combinedText(lead: Lead): string {
-  return [lead.enquiryText, lead.notes, lead.status, lead.appointmentStatus, lead.budgetSignal]
+  return [lead.enquiryText, lead.notes, lead.status, lead.sourceStage ?? "", lead.appointmentStatus, lead.budgetSignal]
     .join(" ")
     .toLowerCase();
 }
@@ -23,13 +23,14 @@ function daysSince(date: string | undefined, referenceDate: Date): number | null
 function getIntent(lead: Lead, text: string): { level: IntentLevel; points: number; keyword?: string } {
   let points = 0;
   const service = lead.serviceInterest.trim().toLowerCase();
+  const statusContext = [lead.status, lead.sourceStage ?? ""].join(" ").toLowerCase();
   if (!GENERIC_SERVICES.has(service) && service.length >= 4) points += 25;
   const keyword = BUYING_KEYWORDS.find((term) => text.includes(term));
   if (keyword) points += 25;
   if (lead.quotedPrice !== undefined || /budget|price|cost|quote/.test(lead.budgetSignal.toLowerCase())) points += 20;
   if (/requested|booked|scheduled|missed/.test(lead.appointmentStatus.toLowerCase())) points += 15;
   if (lead.enquiryText.trim().length >= 45) points += 10;
-  if (/interested|qualified|hot|proposal/.test(lead.status.toLowerCase())) points += 10;
+  if (/interested|qualified|hot|proposal/.test(statusContext)) points += 10;
   return { level: points >= 55 ? "High" : points >= 30 ? "Medium" : "Low", points, keyword };
 }
 
@@ -139,6 +140,7 @@ export function generateRecoveryMessage(lead: Lead, leakageType: string): string
 /** Deterministic Phase 1 analysis. See docs/scoring-methodology.md for the point table. */
 export function analyzeLead(lead: Lead, referenceDate = new Date()): LeadAnalysis {
   const text = combinedText(lead);
+  const statusContext = [lead.status, lead.sourceStage ?? ""].join(" ").toLowerCase();
   const contactAge = daysSince(lead.lastContactDate, referenceDate);
   const intent = getIntent(lead, text);
   const confidence = getConfidence(lead);
@@ -160,7 +162,7 @@ export function analyzeLead(lead: Lead, referenceDate = new Date()): LeadAnalysi
   if (callbackPromised && !recentlyContacted) score += 20;
   if (missedAppointment) score += 24;
   else if (appointmentRequested && !recentlyContacted) score += 17;
-  if (/interested|qualified|hot|proposal/.test(lead.status.toLowerCase())) score += 10;
+  if (/interested|qualified|hot|proposal/.test(statusContext)) score += 10;
   if (priceObjection) score += 6;
   if (repeatedNoResponse) score += intent.level === "High" ? -4 : -14;
   if (!lead.phone && !lead.email) score -= 12;
@@ -174,12 +176,13 @@ export function analyzeLead(lead: Lead, referenceDate = new Date()): LeadAnalysi
   else if (priceObjection) leakageType = "Price objection stalled";
   else if (repeatedNoResponse) leakageType = "Repeated no-response";
   else if (clarificationNeeded) leakageType = "Needs clarification";
-  else if (/interested|qualified|hot|proposal/.test(lead.status.toLowerCase()) && (contactAge ?? 0) >= 4) {
+  else if (/interested|qualified|hot|proposal/.test(statusContext) && (contactAge ?? 0) >= 4) {
     leakageType = "Interested lead left waiting";
   }
 
   const evidence: string[] = [];
   if (lead.serviceInterest) evidence.push(`Service interest recorded as “${lead.serviceInterest}”.`);
+  if (lead.sourceStage) evidence.push(`Imported source stage recorded as “${lead.sourceStage}”.`);
   if (intent.keyword) evidence.push(`Record contains buying-intent language: “${intent.keyword}”.`);
   if (lead.lastContactDate && contactAge !== null) {
     evidence.push(`Last contact was ${contactAge} day${contactAge === 1 ? "" : "s"} ago (${lead.lastContactDate}).`);
