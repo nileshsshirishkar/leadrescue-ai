@@ -183,6 +183,7 @@ export async function importCsvRows(
             email: lead.email ?? "",
             serviceInterest: lead.serviceInterest,
             source: lead.source,
+            sourceStage: lead.sourceStage ?? "",
             status: lead.status,
             enquiryText: lead.enquiryText,
             lastContactDate: lead.lastContactDate ?? "",
