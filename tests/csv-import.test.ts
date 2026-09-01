@@ -31,7 +31,8 @@ const rows = [
     lead: {
       name: "Fictional CSV Lead A",
       source: "Meta",
-      status: "Proposal",
+      sourceStage: "Proposal",
+      status: "New",
     },
   },
   {
@@ -39,7 +40,8 @@ const rows = [
     lead: {
       name: "Fictional CSV Lead B",
       source: "",
-      status: "Follow-up needed",
+      sourceStage: "Follow-up needed",
+      status: "New",
     },
   },
 ];
@@ -75,6 +77,25 @@ describe("importTenantCsvRows", () => {
         sourceStage: "Follow-up needed",
       }),
     ]));
+  });
+
+  it("treats legacy client status as source stage, never as authoritative workflow status", async () => {
+    let persisted: Record<string, unknown> | undefined;
+    const result = await importTenantCsvRows(
+      {
+        importId,
+        rows: [{ rowNumber: 4, lead: { name: "Legacy CSV Client", status: "Proposal" } }],
+      },
+      dependencies({
+        persistLead: async (input) => {
+          persisted = input;
+          return [{ result: "created", lead_id: leadId }];
+        },
+      }),
+    );
+
+    expect(result).toMatchObject({ status: "ok", created: 1, errors: 0 });
+    expect(persisted).toMatchObject({ status: "New", sourceStage: "Proposal" });
   });
 
   it("reports created, existing, and row errors independently", async () => {
