@@ -1,6 +1,6 @@
 # LeadRescue AI Milestone 15 Import Status Taxonomy
 
-**Status:** IMPLEMENTED AND VERIFIED IN LOCAL CI, HOSTED DEV, AND SIGNED-OUT PREVIEW. Authenticated Preview import acceptance remains pending. This milestone targets `develop` only and does not authorize `main`, public Production, Production Supabase migration, paid-plan changes, DNS changes, or real Client #1 data.
+**Status:** IMPLEMENTED AND VERIFIED IN LOCAL CI, HOSTED DEV, AND AUTHENTICATED PREVIEW. This milestone targets `develop` only and does not authorize `main`, public Production, Production Supabase migration, paid-plan changes, DNS changes, or real Client #1 data.
 
 ## Approved decision
 
@@ -40,9 +40,9 @@ Dedicated tests cover:
 - deterministic scoring using source-stage context;
 - database creation with external stage `Proposal`, persisted workflow status `New`, source metadata preservation, and CHECK-constraint rejection of invalid workflow status values.
 
-Exact-head CI #170 completed successfully on pre-evidence head `0c1d4443d5dd45ef2682a8ba3365556cd308f081`, including lint, typecheck, unit tests, build, local Supabase startup, and pgTAP database tests.
+CI #171 completed successfully on evidence head `b8e2fcf874da71e27e06e37f25b8a9ccab6649e5`, including lint, typecheck, unit tests, build, local Supabase startup, and pgTAP database tests.
 
-Because this evidence file changes the PR head, exact-head CI must be rerun before merge readiness.
+Because this final acceptance evidence update creates a new PR head, exact-head CI and Preview readiness must be reverified again before the merge decision.
 
 ## Hosted Dev verification
 
@@ -67,15 +67,32 @@ The transaction was rolled back. A subsequent direct residue check confirmed zer
 
 Production Supabase was not mutated.
 
-## Preview verification
+## Authenticated Preview acceptance
 
-The feature-branch Vercel Preview for pre-evidence head `0c1d4443d5dd45ef2682a8ba3365556cd308f081` was `READY` as deployment `dpl_3k9WbPRiy2kr83QKVbgSSCgQnj49` with branch alias:
+The feature-branch Vercel Preview used for authenticated acceptance was deployment `dpl_H3x2qxKpzokL82aHttYXqk8ogT3G` on head `b8e2fcf874da71e27e06e37f25b8a9ccab6649e5`, with branch alias:
 
 `https://leadrescue-ai-git-feat-import-status-taxonomy-lead-rescue-ai.vercel.app`
 
-A signed-out request to `/api/workspace` returned HTTP 401 with `Authentication required.` and `Cache-Control: private, no-store`, confirming the Preview remains fail-closed while unauthenticated.
+A signed-out request to `/api/workspace` had already returned HTTP 401 with `Authentication required.` and `Cache-Control: private, no-store`, confirming the Preview remained fail-closed while unauthenticated.
 
-Authenticated Preview acceptance is still required to prove the browser CSV path sends source-stage context through the deployed application into hosted Dev persistence and that a refreshed workspace returns authoritative status `New` plus the preserved source stage.
+The user then authenticated as the existing fictional Tenant B Dev QA operator and imported a one-row fictional CSV through the supported drag-and-drop path. Browser evidence showed the local analyzed workspace increased from one existing fixture lead to two and displayed `Status Taxonomy QA`.
+
+Vercel runtime logs independently recorded `POST /api/imports/csv` HTTP 200 at 19:38:59 on the exact acceptance deployment, followed by successful `/api/workspace` reads.
+
+Direct hosted Dev verification found exactly one matching imported lead, one matching contact, and one `lead_imported` event in Tenant B QA. The persisted values were:
+
+- contact name: `Status Taxonomy QA`;
+- organization slug: `tenant-b-qa`;
+- authoritative LeadRescue status: `New`;
+- source: `Manual QA`;
+- source external id: `csv:0bbe8be0-a8c1-4cba-a8d1-f47dd0ca3344:2`;
+- preserved external source stage: `Proposal`.
+
+This proves the deployed authenticated browser import path separates external source-stage context from authoritative LeadRescue workflow status.
+
+The temporary acceptance lead had zero follow-up tasks and one import event. It was then removed from hosted Dev in controlled dependency order: event, lead, contact. Direct cleanup verification returned zero remaining matching leads, contacts, and events. The existing Dev Auth users, organizations, memberships, and baseline fixtures were not deleted.
+
+Three earlier attempts using the file-picker button produced no `/api/imports/csv` request and no browser validation message. A fresh QA file imported successfully by drag-and-drop. This does not invalidate the status-taxonomy acceptance because the deployed CSV persistence path was exercised successfully, but the file-picker behavior is recorded as a separate usability follow-up rather than silently treated as proven.
 
 ## Safety boundary
 
@@ -87,14 +104,14 @@ Authenticated Preview acceptance is still required to prove the browser CSV path
 - No service-role bypass is introduced.
 - RLS and authenticated tenant derivation remain the authorization boundary.
 
-## Remaining gate
+## Merge gate
 
-Before PR #29 can be considered merge-ready for `develop`:
+Authenticated Preview acceptance and hosted Dev cleanup are complete. Before PR #29 can merge into `develop`:
 
-1. run one authenticated fictional CSV import through the exact feature-branch Preview against hosted Dev;
-2. verify the resulting persisted row has authoritative status `New` and the incoming external stage in `source_metadata.source_stage`;
-3. verify the refreshed workspace exposes both values separately;
-4. clean the temporary hosted Dev import residue;
-5. update this evidence with the exact final PR head and acceptance result;
-6. rerun exact-head CI and Preview checks;
-7. bring PR #29 to a separate explicit Merge/Hold gate for `develop` only.
+1. verify exact final PR head after this evidence update;
+2. require exact-head CI success;
+3. require exact-head Vercel Preview READY;
+4. keep the file-picker behavior as a separately tracked usability follow-up unless it becomes reproducible as an application defect;
+5. bring PR #29 to a separate explicit Merge/Hold approval for `develop` only.
+
+No `main` merge, public Production promotion, or Production Supabase migration is authorized by this milestone.
