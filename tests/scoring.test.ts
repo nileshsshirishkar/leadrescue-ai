@@ -35,6 +35,24 @@ describe("deterministic lead analysis", () => {
     expect(result.humanReviewRequired).toBe(true);
   });
 
+  it("uses imported source stage as context without changing authoritative LeadRescue status", () => {
+    const result = analyzeLead(
+      lead({
+        status: "New",
+        sourceStage: "Proposal",
+        enquiryText: "Interested in the consultation.",
+        budgetSignal: "",
+        quotedPrice: undefined,
+      }),
+      referenceDate,
+    );
+
+    expect(result.lead.status).toBe("New");
+    expect(result.lead.sourceStage).toBe("Proposal");
+    expect(result.evidence).toContain("Imported source stage recorded as “Proposal”.");
+    expect(result.leakageType).toBe("Interested lead left waiting");
+  });
+
   it("does not chase a lead contacted today", () => {
     const result = analyzeLead(lead({ lastContactDate: "2026-07-19", status: "Contacted" }), referenceDate);
     expect(result.leakageType).toBe("Recently contacted — monitor");
