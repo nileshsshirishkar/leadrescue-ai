@@ -14,6 +14,7 @@ export const leadSchema = z.object({
   ),
   serviceInterest: optionalText,
   source: optionalText,
+  sourceStage: optionalText,
   status: optionalText,
   enquiryText: optionalText,
   lastContactDate: z.string().trim().optional().default("").refine(
