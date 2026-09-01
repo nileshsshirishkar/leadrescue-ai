@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const optionalText = z.string().trim().max(2_000, "Must be 2,000 characters or fewer").optional().default("");
+const optionalSparseText = z.string().trim().max(2_000, "Must be 2,000 characters or fewer").optional();
 const optionalContact = z.string().trim().max(240, "Contact value is too long").optional().default("");
 
 export const leadSchema = z.object({
@@ -14,7 +15,7 @@ export const leadSchema = z.object({
   ),
   serviceInterest: optionalText,
   source: optionalText,
-  sourceStage: optionalText,
+  sourceStage: optionalSparseText,
   status: optionalText,
   enquiryText: optionalText,
   lastContactDate: z.string().trim().optional().default("").refine(
