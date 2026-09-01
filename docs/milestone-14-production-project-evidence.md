@@ -57,9 +57,9 @@ For Production acceptance only, branch `ops/production-environment` has branch-s
 
 General Preview values remain unchanged for other branches. `main`, the public Vercel Production deployment, and Production environment variables were not changed.
 
-Verified acceptance deployment before this evidence update used Vercel Preview on branch `ops/production-environment`, exact head `6b1dea0cebb6d74c5a734cee8050f319302c5a10`, deployment `dpl_SzcugFTt3xf4x2kF4HrNJX3o9LEf`, with branch alias `leadrescue-ai-git-ops-production-environment-lead-rescue-ai.vercel.app`. It was `READY` and CI run #153 passed on that exact head.
+Verified acceptance deployment before the rollback-evidence update used Vercel Preview on branch `ops/production-environment`, exact head `6b1dea0cebb6d74c5a734cee8050f319302c5a10`, deployment `dpl_SzcugFTt3xf4x2kF4HrNJX3o9LEf`, with branch alias `leadrescue-ai-git-ops-production-environment-lead-rescue-ai.vercel.app`. It was `READY` and CI run #153 passed on that exact head.
 
-Because this evidence update moves the PR head, exact-head CI and Preview must be reverified again before any merge decision.
+Because the evidence updates move the PR head, exact-head CI and Preview must be reverified again before any merge decision.
 
 ## Verified Production QA acceptance
 
@@ -80,7 +80,7 @@ Production-connected browser testing with two genuinely independent authenticate
 - mixed-row CSV behavior where a valid row persisted and an invalid sibling row returned `error` without producing an orphan contact;
 - deletion/offboarding behavior after tenant memberships were removed, where a still-authenticated Tenant B session failed closed with HTTP 403 `Organization access is not configured.`.
 
-## Genuine expired access-token refresh follow-up
+## AuthRefreshDiscardedError reassessment
 
 A real Tenant A access JWT was allowed to expire while the browser profile and refresh session remained intact.
 
@@ -97,7 +97,33 @@ After the expiry window, the same browser/profile reopened the Production-connec
 
 A second probe retained the same new expiry, confirming a stable refreshed session rather than continuous rotation.
 
-Vercel logs at the refresh boundary recorded `AuthRefreshDiscardedError` for concurrent `/api/workspace` and `/api/follow-up-reminders` requests, while both HTTP responses remained 200 and subsequent workspace requests remained clean and successful. This remains an observability/dependency follow-up, not proof of auth failure. It must be reassessed against the current pinned Supabase packages and current upstream guidance before final Milestone 14 merge readiness.
+Vercel logs at the refresh boundary recorded `AuthRefreshDiscardedError` for concurrent `/api/workspace` and `/api/follow-up-reminders` requests, while both HTTP responses remained 200 and subsequent workspace requests remained clean and successful.
+
+The dependency review was re-run after QA cleanup against the current repository manifest and current upstream Supabase guidance:
+
+- LeadRescue currently declares `@supabase/ssr` `^0.12.4` and `@supabase/supabase-js` `^2.112.3`.
+- Current npm `latest` for `@supabase/supabase-js` is `2.112.4`.
+- Supabase introduced lockless Auth refresh coordination in `v2.107.0` using single-flight refresh plus a commit guard.
+- Supabase's current lockless-coordination migration notes explicitly document `AuthRefreshDiscardedError` as the result used when a refresh commit is discarded to keep session storage consistent under a race. The notes state that most callers on the default lockless path have no action to take and should not add a custom lock as a workaround.
+- The current upstream implementation and tests treat the error as an intentional concurrency guard outcome, not by itself evidence that the user session is corrupt.
+- `v2.112.4` includes a separate Auth fix that prevents an unhandled refresh rejection when a refresh fails with no concurrent waiter and adds deprecation warnings for custom locks. The upstream change does not establish that LeadRescue's observed successful-refresh-boundary event is a user-visible auth failure or that a LeadRescue auth-code change is required.
+- Vercel Hobby runtime-log retention no longer contains the old boundary event, so the original raw log cannot now be re-expanded beyond the evidence already captured at test time.
+
+Current classification: **observability/dependency noise with no demonstrated user-visible failure**. The strongest runtime evidence remains that the access token genuinely refreshed, the refresh-token fingerprint changed, concurrent protected requests stayed HTTP 200, and subsequent protected requests remained stable.
+
+No LeadRescue auth-code change is justified from current evidence. Do not add a custom Supabase Auth lock, manually retry `AuthRefreshDiscardedError`, suppress auth errors globally, or change cookie/session handling merely to remove this log line.
+
+No dependency upgrade is being made inside PR #28 because this milestone is Production-environment evidence/governance, the current behavior passed runtime acceptance, and `2.112.4` does not provide a proven fix for this specific observed event. A normal dependency-maintenance branch may separately evaluate `2.112.4` with CI and auth regression tests after Milestone 14, or earlier only if the error recurs with an actual 401/session loss or other user-visible failure.
+
+Escalation condition: if `AuthRefreshDiscardedError` recurs together with HTTP 401, unexpected sign-out, lost refresh ability, repeated rotation, or tenant-access inconsistency, open a dedicated auth regression milestone and capture exact request timing plus fresh runtime logs before changing code.
+
+Upstream references reverified for this assessment:
+
+- Supabase lockless Auth coordination migration: `supabase/supabase-js`, `packages/core/auth-js/migrations/lockless-coordination.md`
+- Supabase release history: `v2.107.0` introduced lockless coordination; `v2.112.4` includes the later unhandled-refresh-rejection fix
+- Supabase PR #2627: `fix(auth): warn on deprecated lock option and prevent unhandled refresh rejection`
+
+This closes the Milestone 14 `AuthRefreshDiscardedError` review as **NO CODE CHANGE / OBSERVE**.
 
 ## Zero-QA-residue cleanup verification
 
@@ -202,26 +228,25 @@ For any future public Production promotion, use this controlled sequence:
 
 No live rollback or Production promotion was executed during this verification.
 
-## Current PR and CI state before this evidence update
+## Current PR and CI state before final evidence validation
 
-Immediately before this documentation update:
+Immediately before the Auth dependency assessment update:
 
 - repository resolved exactly to `nileshsshirishkar/leadrescue-ai`;
 - PR #28 was open, draft, mergeable, base `develop`;
-- PR #28 head was `6b1dea0cebb6d74c5a734cee8050f319302c5a10`;
-- CI run #153 completed successfully on that exact head;
-- the exact-head Vercel Preview was `READY`.
+- PR #28 head was `27654bb9a824e8e811cb5809097eb8534af74773` after the rollback/cleanup evidence update;
+- the previous exact-head CI evidence was CI run #153 on `6b1dea0cebb6d74c5a734cee8050f319302c5a10`;
+- the previous exact-head Vercel Preview was `READY`.
 
-Because this documentation update creates a new PR head, those exact-head checks must be run again before merge readiness can be assessed.
+Because this Auth assessment update creates another new PR head, exact-head CI and Vercel Preview must now be reverified before merge readiness can be assessed.
 
 ## Remaining Milestone 14 gates
 
-Fictional Production tenant/auth/import/deletion QA and rollback-design verification are complete. Remaining controlled work is:
+Fictional Production tenant/auth/import/deletion QA, rollback-design verification, and the `AuthRefreshDiscardedError` reassessment are complete. Remaining controlled work is:
 
-1. reassess the observed `AuthRefreshDiscardedError` against the current pinned Supabase packages and current official/upstream guidance, without changing auth code based on guesswork;
-2. update evidence if that review changes the risk classification or requires a code/test follow-up;
-3. rerun exact-head CI and Vercel Preview validation after the final evidence changes;
-4. bring PR #28 to an explicit Merge/Hold gate for `develop` only.
+1. rerun exact-head CI and Vercel Preview validation after this final evidence change;
+2. verify PR #28 remains open/draft/mergeable against `develop` with no unexpected code changes;
+3. bring PR #28 to an explicit Merge/Hold gate for `develop` only.
 
 Client #1 commercial gates remain separate and unresolved until required: paid Vercel commercial plan, Supabase Pro, leaked-password protection enabled, verified backup/restore, monitoring/rate-limit readiness, and the other approved Client #1 operational/privacy controls.
 
