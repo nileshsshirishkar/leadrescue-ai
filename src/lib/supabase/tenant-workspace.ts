@@ -27,7 +27,7 @@ const workspaceLeadRowSchema = z
     business_type: z.string(),
     service_interest: z.string(),
     source: z.string(),
-    source_metadata: sourceMetadataSchema,
+    source_metadata: sourceMetadataSchema.optional().default({}),
     status: z.string(),
     enquiry_text: z.string(),
     last_contact_at: z.string().nullable(),
