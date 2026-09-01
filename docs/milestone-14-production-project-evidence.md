@@ -57,13 +57,7 @@ For Production acceptance only, branch `ops/production-environment` has branch-s
 
 General Preview values remain unchanged for other branches. `main`, the public Vercel Production deployment, and Production environment variables were not changed.
 
-Verified acceptance deployment:
-
-- Vercel environment: Preview
-- branch: `ops/production-environment`
-- tested commit before this documentation update: `b489b8c26ac8720b54d65b0a1795668e18123c90`
-- branch alias: `leadrescue-ai-git-ops-production-environment-lead-rescue-ai.vercel.app`
-- deployment state during acceptance: READY
+Verified acceptance deployment uses Vercel Preview on branch `ops/production-environment` with branch alias `leadrescue-ai-git-ops-production-environment-lead-rescue-ai.vercel.app`.
 
 ## Fictional Production QA identities and tenants
 
@@ -111,11 +105,24 @@ A second probe retained the same new expiry, confirming a stable refreshed sessi
 
 Vercel logs at the refresh boundary recorded `AuthRefreshDiscardedError` for concurrent `/api/workspace` and `/api/follow-up-reminders` requests, while both HTTP responses remained 200 and subsequent workspace requests remained clean and successful. This is recorded as a follow-up observability/dependency item, not as proof of auth failure. It must be reassessed before final commercial Production sign-off if it recurs or produces user-visible/session failures.
 
+## Founder pause/reactivate acceptance
+
+Founder-controlled organization access enforcement was tested against the already-authenticated Tenant B session.
+
+- Production `fictional-qa-tenant-b` was changed from `active` to `paused` through the administrative Production database path.
+- The already-authenticated Tenant B browser was refreshed without first signing out.
+- The application denied workspace access and displayed the dedicated `LeadRescue access is paused` state, confirming that a valid Auth session alone does not bypass organization access status.
+- The paused screen stated that data remains stored and is not deleted by a pause.
+- Tenant B was then changed from `paused` back to `active` through the administrative Production database path.
+- Refreshing the same Tenant B browser session restored normal workspace access without reprovisioning the user.
+- Direct Production verification after reactivation shows Tenant A and Tenant B both `active`; Tenant A still has one lead and zero pending tasks, while Tenant B still has one lead and one pending task.
+- Vercel Preview runtime logs after reactivation show `/`, `/api/workspace`, and `/api/follow-up-reminders` returning HTTP 200 on `ops/production-environment`.
+
+This verifies pause/reactivate enforcement at the application/database boundary while preserving tenant data.
+
 ## Current CI and PR state before this evidence commit
 
-PR #28 targets `develop`, remains draft/open, and was mergeable at head `b489b8c26ac8720b54d65b0a1795668e18123c90` before this documentation update.
-
-GitHub Actions CI run #151 for that exact head completed successfully. Vercel status was also successful. Because this evidence update changes the PR head, exact-head CI/Preview checks must be reverified after this commit before any merge decision.
+PR #28 targets `develop` and remains draft/open. GitHub Actions CI run #152 completed successfully on head `e393b6188cb525c87333d27c7d5476bb9a79bf73` before this documentation update. Because this evidence commit changes the PR head again, exact-head CI and Preview status must be reverified before any merge decision.
 
 ## Historical clean-state record
 
@@ -125,16 +132,15 @@ Production now intentionally contains the controlled fictional QA fixtures descr
 
 ## Remaining Milestone 14 gates
 
-The major two-tenant and expired-token acceptance gates are complete, but Milestone 14 is not finished. Remaining controlled work includes:
+The major two-tenant, expired-token, and founder pause/reactivate acceptance gates are complete, but Milestone 14 is not finished. Remaining controlled work includes:
 
-1. verify founder pause/reactivate enforcement against the Production-connected Preview and database paths;
-2. verify signed-out, wrong-password, malformed/invalid-session behavior fails closed;
-3. verify Production import retry/idempotency and row-failure behavior without duplicating logical leads or overwriting later human edits;
-4. verify fictional-data deletion/offboarding and zero QA residue procedure;
-5. verify rollback procedure before any `main` or public Production promotion;
-6. reassess the observed `AuthRefreshDiscardedError` against the current pinned Supabase packages and current upstream guidance;
-7. rerun exact-head CI and Preview validation after the final evidence changes;
-8. only then bring PR #28 to an explicit Merge/Hold gate for `develop`.
+1. verify signed-out, wrong-password, and malformed/invalid-session behavior fails closed;
+2. verify Production import retry/idempotency and row-failure behavior without duplicating logical leads or overwriting later human edits;
+3. verify fictional-data deletion/offboarding and zero QA residue procedure;
+4. verify rollback procedure before any `main` or public Production promotion;
+5. reassess the observed `AuthRefreshDiscardedError` against the current pinned Supabase packages and current upstream guidance;
+6. rerun exact-head CI and Preview validation after the final evidence changes;
+7. only then bring PR #28 to an explicit Merge/Hold gate for `develop`.
 
 Backup/restore verification remains tied to the approved commercial Supabase plan. Monitoring/rate-limit commercial gates remain tied to the approved Vercel plan. Public `main`/Production promotion is a separate later approval.
 
