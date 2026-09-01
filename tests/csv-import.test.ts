@@ -31,7 +31,7 @@ const rows = [
     lead: {
       name: "Fictional CSV Lead A",
       source: "Meta",
-      status: "New",
+      status: "Proposal",
     },
   },
   {
@@ -45,7 +45,7 @@ const rows = [
 ];
 
 describe("importTenantCsvRows", () => {
-  it("persists rows with stable per-import row keys and preserves source", async () => {
+  it("persists rows with stable keys, preserves source stage, and starts LeadRescue status at New", async () => {
     const persisted: Array<Record<string, unknown>> = [];
     const result = await importTenantCsvRows(
       { importId, rows },
@@ -64,11 +64,15 @@ describe("importTenantCsvRows", () => {
         fullName: "Fictional CSV Lead A",
         source: "Meta",
         sourceExternalId: `csv:${importId}:2`,
+        status: "New",
+        sourceStage: "Proposal",
       }),
       expect.objectContaining({
         fullName: "Fictional CSV Lead B",
         source: "manual_csv",
         sourceExternalId: `csv:${importId}:3`,
+        status: "New",
+        sourceStage: "Follow-up needed",
       }),
     ]));
   });
