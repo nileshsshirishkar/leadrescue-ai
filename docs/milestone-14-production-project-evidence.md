@@ -1,6 +1,6 @@
 # LeadRescue AI Milestone 14 Production Project Evidence
 
-**Status:** PRODUCTION QA IN PROGRESS WITH MAJOR TENANT/AUTH GATES VERIFIED. This file records direct current evidence for the separate Production Supabase project and isolated Vercel Preview. It does not authorize `main`, public Production promotion, commercial hosting, or real Client #1 data.
+**Status:** PRODUCTION QA ACCEPTANCE COMPLETE THROUGH ZERO-RESIDUE CLEANUP; ROLLBACK DESIGN VERIFIED, PAID-PLAN EXECUTION STILL PENDING. This file records direct current evidence for the separate Production Supabase project and isolated Vercel Preview. It does not authorize `main`, public Production promotion, commercial hosting, or real Client #1 data.
 
 ## Verified project identity
 
@@ -44,7 +44,7 @@ The expected workflow functions exist:
 
 Direct privilege checks confirmed `anon` has no SELECT privilege on the seven LeadRescue tables, authenticated access is RLS-constrained, approved application RPCs are not executable by `anon`, and `public.rls_auto_enable()` is not directly executable by browser roles.
 
-Supabase Security Advisor after migration returned no database security lints. Supabase Pro and leaked-password protection remain intentionally deferred until the approved Client #1 onboarding gate and must be enabled before real Client #1 commercial lead data is accepted.
+Supabase Security Advisor after migration returned no database security lints except the separately recorded `Leaked Password Protection Disabled` Auth advisory. Supabase Pro and leaked-password protection remain intentionally deferred until the approved Client #1 onboarding gate and must be enabled before real Client #1 commercial lead data is accepted.
 
 ## Isolated Production-connected Preview
 
@@ -57,36 +57,30 @@ For Production acceptance only, branch `ops/production-environment` has branch-s
 
 General Preview values remain unchanged for other branches. `main`, the public Vercel Production deployment, and Production environment variables were not changed.
 
-Verified acceptance deployment uses Vercel Preview on branch `ops/production-environment` with branch alias `leadrescue-ai-git-ops-production-environment-lead-rescue-ai.vercel.app`.
+Verified acceptance deployment before this evidence update used Vercel Preview on branch `ops/production-environment`, exact head `6b1dea0cebb6d74c5a734cee8050f319302c5a10`, deployment `dpl_SzcugFTt3xf4x2kF4HrNJX3o9LEf`, with branch alias `leadrescue-ai-git-ops-production-environment-lead-rescue-ai.vercel.app`. It was `READY` and CI run #153 passed on that exact head.
 
-## Fictional Production QA identities and tenants
+Because this evidence update moves the PR head, exact-head CI and Preview must be reverified again before any merge decision.
 
-Two founder-created QA Auth users are temporarily retained under the explicitly accepted QA-identity exception. They are mapped to two fictional organizations:
+## Verified Production QA acceptance
 
-- `fictional-qa-tenant-a`
-- `fictional-qa-tenant-b`
+Production-connected browser testing with two genuinely independent authenticated sessions verified all of the following using fictional QA data only:
 
-All acceptance contact, lead, note, task, and event data is fictional. These QA users and fixtures must be removed before real Client #1 Production data is onboarded.
+- bidirectional tenant-isolated workspace reads;
+- direct cross-tenant lead GET denial;
+- direct cross-tenant PATCH denial;
+- own-tenant workflow update with audit event and pending follow-up task using `due_at`;
+- reminder isolation between tenants;
+- genuine expired access-token refresh without manual re-login;
+- founder pause/reactivate enforcement against an already-authenticated browser session;
+- signed-out fail-closed behavior with `/api/workspace` returning HTTP 401;
+- wrong-password rejection with sanitized `Email or password is incorrect.` and no workspace access;
+- malformed/invalid-session fail-closed behavior returning HTTP 401;
+- CSV retry/idempotency using a stable `importId + rowNumber` identity;
+- a stale retry returning `existing` without duplicating the logical lead or overwriting a later authenticated human edit;
+- mixed-row CSV behavior where a valid row persisted and an invalid sibling row returned `error` without producing an orphan contact;
+- deletion/offboarding behavior after tenant memberships were removed, where a still-authenticated Tenant B session failed closed with HTTP 403 `Organization access is not configured.`.
 
-## Verified two-tenant application acceptance
-
-Production-connected browser testing with two genuinely independent authenticated sessions verified:
-
-- Tenant A workspace initially contained only Tenant A data.
-- Tenant B workspace initially returned zero leads while Tenant A already had a persisted lead.
-- Tenant A fictional CSV import created one Tenant A contact, lead, and `lead_imported` event.
-- Tenant B fictional CSV import created one Tenant B contact, lead, and `lead_imported` event without modifying Tenant A.
-- Tenant B direct GET of Tenant A lead returned `404` with `Lead not found.`
-- Tenant B direct PATCH of Tenant A lead returned `404`; Tenant A status, notes, tasks, timestamp, and event count remained unchanged.
-- Tenant A direct GET of Tenant B lead returned `404` with `Lead not found.`
-- Tenant A direct PATCH of Tenant B lead returned `404`; Tenant B status, notes, tasks, timestamp, and event count remained unchanged.
-- Tenant B own-tenant workflow PATCH returned HTTP 200, updated the lead, created a pending `lead_follow_up` task using `due_at`, assigned it to the Tenant B QA user, and created a `lead_workflow_updated` event with the correct actor.
-- Tenant B reminder endpoint returned only Tenant B's pending reminder.
-- Tenant A reminder endpoint returned an empty reminder array and did not reveal Tenant B's task.
-
-This provides bidirectional browser-level evidence for tenant-isolated lead reads, workflow writes, tasks, and reminders through normal authenticated application paths.
-
-## Genuine expired access-token refresh acceptance
+## Genuine expired access-token refresh follow-up
 
 A real Tenant A access JWT was allowed to expire while the browser profile and refresh session remained intact.
 
@@ -103,45 +97,132 @@ After the expiry window, the same browser/profile reopened the Production-connec
 
 A second probe retained the same new expiry, confirming a stable refreshed session rather than continuous rotation.
 
-Vercel logs at the refresh boundary recorded `AuthRefreshDiscardedError` for concurrent `/api/workspace` and `/api/follow-up-reminders` requests, while both HTTP responses remained 200 and subsequent workspace requests remained clean and successful. This is recorded as a follow-up observability/dependency item, not as proof of auth failure. It must be reassessed before final commercial Production sign-off if it recurs or produces user-visible/session failures.
+Vercel logs at the refresh boundary recorded `AuthRefreshDiscardedError` for concurrent `/api/workspace` and `/api/follow-up-reminders` requests, while both HTTP responses remained 200 and subsequent workspace requests remained clean and successful. This remains an observability/dependency follow-up, not proof of auth failure. It must be reassessed against the current pinned Supabase packages and current upstream guidance before final Milestone 14 merge readiness.
 
-## Founder pause/reactivate acceptance
+## Zero-QA-residue cleanup verification
 
-Founder-controlled organization access enforcement was tested against the already-authenticated Tenant B session.
+The user explicitly approved deletion of all fictional Production QA residue.
 
-- Production `fictional-qa-tenant-b` was changed from `active` to `paused` through the administrative Production database path.
-- The already-authenticated Tenant B browser was refreshed without first signing out.
-- The application denied workspace access and displayed the dedicated `LeadRescue access is paused` state, confirming that a valid Auth session alone does not bypass organization access status.
-- The paused screen stated that data remains stored and is not deleted by a pause.
-- Tenant B was then changed from `paused` back to `active` through the administrative Production database path.
-- Refreshing the same Tenant B browser session restored normal workspace access without reprovisioning the user.
-- Direct Production verification after reactivation shows Tenant A and Tenant B both `active`; Tenant A still has one lead and zero pending tasks, while Tenant B still has one lead and one pending task.
-- Vercel Preview runtime logs after reactivation show `/`, `/api/workspace`, and `/api/follow-up-reminders` returning HTTP 200 on `ops/production-environment`.
+Application data was removed through a controlled Production SQL Editor transaction after the connected Supabase SQL path rejected writes in a read-only transaction. The cleanup transaction targeted only the two known fictional QA organizations and deleted dependent rows in controlled order.
 
-This verifies pause/reactivate enforcement at the application/database boundary while preserving tenant data.
+The already-authenticated Tenant B browser was then tested after membership deletion and `/api/workspace` returned HTTP 403 with `Organization access is not configured.`, proving that the remaining Auth session could not retain tenant access after authorization data was removed.
 
-## Current CI and PR state before this evidence commit
+The two temporary QA Auth users were then permanently deleted through Supabase Authentication -> Users.
 
-PR #28 targets `develop` and remains draft/open. GitHub Actions CI run #152 completed successfully on head `e393b6188cb525c87333d27c7d5476bb9a79bf73` before this documentation update. Because this evidence commit changes the PR head again, exact-head CI and Preview status must be reverified before any merge decision.
+Direct final Production verification showed all of the following at zero:
 
-## Historical clean-state record
+- `auth.users`
+- `auth.sessions`
+- `auth.refresh_tokens`
+- `organizations`
+- `profiles`
+- `organization_members`
+- `contacts`
+- `leads`
+- `lead_events`
+- `follow_up_tasks`
 
-Immediately after the seven canonical migrations and before QA provisioning, direct counts were zero for organizations, profiles, memberships, contacts, leads, events, and tasks. No Dev rows, seed data, QA fixtures, or real client data were introduced by the migration deployment itself.
+Production therefore has zero QA identities and zero QA application-data residue. The seven canonical schema migrations remain in place.
 
-Production now intentionally contains the controlled fictional QA fixtures described above. They are temporary acceptance data and are not customer/commercial evidence.
+## Rollback design verification
+
+Application rollback and database recovery are separate controls and must not be conflated.
+
+### Current public Vercel Production anchor
+
+Direct Vercel deployment verification shows the current public Production deployment remains:
+
+- deployment id: `dpl_4anLwFDrhcqz2FabQqDTk536mHGN`
+- deployment URL: `leadrescue-qoz04tr7s-lead-rescue-ai.vercel.app`
+- GitHub branch: `main`
+- GitHub commit: `e933fe9a3546dc3d63a7c58ce48291d3d96da253`
+- state: `READY`
+- target: `production`
+- public aliases include `leadrescue-ai-eosin.vercel.app`, `leadrescue-ai-lead-rescue-ai.vercel.app`, and `leadrescue-ai-git-main-lead-rescue-ai.vercel.app`.
+
+This is still the old public Phase 2 Production application. It has not been replaced by PR #28 or by the Production-connected Preview.
+
+### Current previous-production rollback candidate
+
+Direct Vercel history also shows the immediately preceding Production deployment is:
+
+- deployment id: `dpl_3JLnaTyxu93CRwctomCZvz24AbjW`
+- deployment URL: `leadrescue-d9vkz5vd3-lead-rescue-ai.vercel.app`
+- GitHub commit: `e8b60b70d0f4eae3de7231313ecd4f06b8d81491`
+- state: `READY`
+- target: `production`
+- Vercel currently marks it `isRollbackCandidate: true`.
+
+This proves that a concrete previous Production deployment exists in Vercel history. It is not the intended rollback target for a future LeadRescue promotion. If a later approved release replaces the current public Production, the pre-promotion anchor that must be preserved for emergency application rollback is the then-current deployment `dpl_4anLwFDrhcqz2FabQqDTk536mHGN` unless a newer explicitly approved public Production deployment supersedes it before promotion.
+
+### Vercel plan limitation
+
+The current Vercel team `LeadRescue AI` is still on the Hobby plan. Current official Vercel documentation states that rolling back to a specific older deployment is available on Pro or Enterprise plans. The documented command is `vercel rollback <deployment-url>`.
+
+Official reference reverified for this milestone:
+
+- https://vercel.com/docs/deployments/rollback-production-deployment
+- https://vercel.com/docs/cli/rollback
+
+Therefore an actual rollback rehearsal is not marked PASS on the current Hobby plan. It would also change public Production traffic, which is outside PR #28 approval. Before real Client #1 commercial use and before any public Production promotion, the approved paid Vercel commercial-plan gate must be satisfied and the current pre-promotion Production anchor must be reverified.
+
+### Supabase database recovery boundary
+
+The Production Supabase project remains on Free during fictional validation. Current official Supabase guidance distinguishes daily backups from Point-in-Time Recovery (PITR):
+
+- paid projects can use physical/daily backup recovery capabilities;
+- PITR is an additional billed recovery option with configurable retention;
+- PITR must be enabled before it can be used for point-in-time rollback;
+- restore-to-new-project is available for paid customers when physical backups are enabled.
+
+Official references reverified for this milestone:
+
+- https://supabase.com/docs/guides/platform/manage-your-usage/point-in-time-recovery
+- https://supabase.com/docs/reference/api/v1-restore-pitr-backup
+- https://supabase.com/blog/restore-to-a-new-project
+
+The approved Client #1 gate already requires Supabase Pro. Before real Client #1 data is accepted, LeadRescue must verify the selected backup/recovery configuration on the paid Production project and perform a controlled restore test. A restore-to-new-project exercise is preferred for the first verification because it can prove recovery without overwriting the active Production database. Whether PITR is required should be decided from the acceptable Recovery Point Objective rather than enabled by assumption.
+
+Database recovery is not currently marked PASS. Free-plan fictional acceptance does not prove commercial backup/restore readiness.
+
+### Release-time rollback procedure
+
+For any future public Production promotion, use this controlled sequence:
+
+1. verify repository is exactly `nileshsshirishkar/leadrescue-ai`;
+2. verify the approved release commit and exact-head CI/Preview evidence;
+3. verify the current public Production deployment immediately before promotion and record its deployment id/URL as the rollback anchor;
+4. verify Vercel is on the approved paid commercial plan and rollback capability is available;
+5. verify Supabase Pro backup/recovery status and the most recent successful recovery test before real client data is at risk;
+6. promote only with separate explicit user approval;
+7. after promotion, verify public Production health, authentication, tenant boundaries and critical API paths;
+8. if the application release is faulty and the database remains compatible, roll Vercel traffic back to the recorded pre-promotion deployment;
+9. if the incident involves data corruption or incompatible database state, stop application writes as appropriate and use the separately approved Supabase recovery procedure rather than assuming an application rollback repairs database state;
+10. record incident evidence, rollback/restore result, and the exact resulting Production deployment/database state.
+
+No live rollback or Production promotion was executed during this verification.
+
+## Current PR and CI state before this evidence update
+
+Immediately before this documentation update:
+
+- repository resolved exactly to `nileshsshirishkar/leadrescue-ai`;
+- PR #28 was open, draft, mergeable, base `develop`;
+- PR #28 head was `6b1dea0cebb6d74c5a734cee8050f319302c5a10`;
+- CI run #153 completed successfully on that exact head;
+- the exact-head Vercel Preview was `READY`.
+
+Because this documentation update creates a new PR head, those exact-head checks must be run again before merge readiness can be assessed.
 
 ## Remaining Milestone 14 gates
 
-The major two-tenant, expired-token, and founder pause/reactivate acceptance gates are complete, but Milestone 14 is not finished. Remaining controlled work includes:
+Fictional Production tenant/auth/import/deletion QA and rollback-design verification are complete. Remaining controlled work is:
 
-1. verify signed-out, wrong-password, and malformed/invalid-session behavior fails closed;
-2. verify Production import retry/idempotency and row-failure behavior without duplicating logical leads or overwriting later human edits;
-3. verify fictional-data deletion/offboarding and zero QA residue procedure;
-4. verify rollback procedure before any `main` or public Production promotion;
-5. reassess the observed `AuthRefreshDiscardedError` against the current pinned Supabase packages and current upstream guidance;
-6. rerun exact-head CI and Preview validation after the final evidence changes;
-7. only then bring PR #28 to an explicit Merge/Hold gate for `develop`.
+1. reassess the observed `AuthRefreshDiscardedError` against the current pinned Supabase packages and current official/upstream guidance, without changing auth code based on guesswork;
+2. update evidence if that review changes the risk classification or requires a code/test follow-up;
+3. rerun exact-head CI and Vercel Preview validation after the final evidence changes;
+4. bring PR #28 to an explicit Merge/Hold gate for `develop` only.
 
-Backup/restore verification remains tied to the approved commercial Supabase plan. Monitoring/rate-limit commercial gates remain tied to the approved Vercel plan. Public `main`/Production promotion is a separate later approval.
+Client #1 commercial gates remain separate and unresolved until required: paid Vercel commercial plan, Supabase Pro, leaked-password protection enabled, verified backup/restore, monitoring/rate-limit readiness, and the other approved Client #1 operational/privacy controls.
 
-No `main` merge or public Production deployment is authorized by this evidence file.
+`main` and public Production promotion remain a later separate approval. No `main` merge or public Production deployment is authorized by this evidence file.
