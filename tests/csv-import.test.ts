@@ -31,6 +31,7 @@ const rows = [
     lead: {
       name: "Fictional CSV Lead A",
       source: "Meta",
+      sourceStage: "Proposal",
       status: "New",
     },
   },
@@ -39,13 +40,14 @@ const rows = [
     lead: {
       name: "Fictional CSV Lead B",
       source: "",
-      status: "Follow-up needed",
+      sourceStage: "Follow-up needed",
+      status: "New",
     },
   },
 ];
 
 describe("importTenantCsvRows", () => {
-  it("persists rows with stable per-import row keys and preserves source", async () => {
+  it("persists rows with stable keys, preserves source stage, and starts LeadRescue status at New", async () => {
     const persisted: Array<Record<string, unknown>> = [];
     const result = await importTenantCsvRows(
       { importId, rows },
@@ -64,13 +66,36 @@ describe("importTenantCsvRows", () => {
         fullName: "Fictional CSV Lead A",
         source: "Meta",
         sourceExternalId: `csv:${importId}:2`,
+        status: "New",
+        sourceStage: "Proposal",
       }),
       expect.objectContaining({
         fullName: "Fictional CSV Lead B",
         source: "manual_csv",
         sourceExternalId: `csv:${importId}:3`,
+        status: "New",
+        sourceStage: "Follow-up needed",
       }),
     ]));
+  });
+
+  it("treats legacy client status as source stage, never as authoritative workflow status", async () => {
+    let persisted: Record<string, unknown> | undefined;
+    const result = await importTenantCsvRows(
+      {
+        importId,
+        rows: [{ rowNumber: 4, lead: { name: "Legacy CSV Client", status: "Proposal" } }],
+      },
+      dependencies({
+        persistLead: async (input) => {
+          persisted = input;
+          return [{ result: "created", lead_id: leadId }];
+        },
+      }),
+    );
+
+    expect(result).toMatchObject({ status: "ok", created: 1, errors: 0 });
+    expect(persisted).toMatchObject({ status: "New", sourceStage: "Proposal" });
   });
 
   it("reports created, existing, and row errors independently", async () => {

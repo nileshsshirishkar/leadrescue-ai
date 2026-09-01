@@ -17,6 +17,7 @@ function lead(index: number): Lead {
     email: "",
     serviceInterest: "Validation",
     source: "manual_csv",
+    sourceStage: "Proposal",
     status: "New",
     enquiryText: "",
     lastContactDate: "",
@@ -56,7 +57,7 @@ function memoryStorage() {
 }
 
 describe("CSV import client", () => {
-  it("sends normalized leads to the authenticated CSV endpoint", async () => {
+  it("sends normalized source stage separately from LeadRescue status", async () => {
     const importId = "7e3d9f4b-2875-4e9d-a2bd-4ad5c2a6c181";
     const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
@@ -74,8 +75,8 @@ describe("CSV import client", () => {
     expect(request).toMatchObject({
       importId,
       rows: [
-        { rowNumber: 2, lead: { name: "Fictional Lead 1", source: "manual_csv" } },
-        { rowNumber: 4, lead: { name: "Fictional Lead 2", source: "manual_csv" } },
+        { rowNumber: 2, lead: { name: "Fictional Lead 1", source: "manual_csv", sourceStage: "Proposal", status: "New" } },
+        { rowNumber: 4, lead: { name: "Fictional Lead 2", source: "manual_csv", sourceStage: "Proposal", status: "New" } },
       ],
     });
     expect(result.created).toBe(1);

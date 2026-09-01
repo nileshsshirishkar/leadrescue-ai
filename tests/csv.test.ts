@@ -3,14 +3,17 @@ import { readFileSync } from "node:fs";
 import { canonicalFieldFor, normalizeCsvRows, parseLeadCsv } from "@/lib/csv";
 
 describe("CSV normalization", () => {
-  it("maps common CRM-style headings", () => {
+  it("maps common CRM-style headings without treating external Stage as LeadRescue status", () => {
     expect(canonicalFieldFor("Full Name")).toBe("name");
     expect(canonicalFieldFor("Lead Source")).toBe("source");
+    expect(canonicalFieldFor("Stage")).toBe("sourceStage");
+    expect(canonicalFieldFor("Lead Status")).toBe("sourceStage");
+    expect(canonicalFieldFor("LeadRescue Status")).toBe("status");
     expect(canonicalFieldFor("Booking Status")).toBe("appointmentStatus");
     expect(canonicalFieldFor("Follow-up Attempts")).toBe("followUpCount");
   });
 
-  it("normalizes text, dates, counts, and formatted prices", () => {
+  it("normalizes text, dates, counts, formatted prices, and external stage separately", () => {
     const result = normalizeCsvRows([{
       "Lead ID": "L-9",
       "Full Name": "  Jordan Vale  ",
@@ -18,6 +21,7 @@ describe("CSV normalization", () => {
       Mobile: "+1 202-555-0188",
       "Email Address": "jordan.vale@example.com",
       "Interested In": "Website audit",
+      Stage: "Proposal",
       "Last Contact": "July 10, 2026",
       "Follow Ups": "3",
       "Quoted Amount": "$1,250",
@@ -27,6 +31,8 @@ describe("CSV normalization", () => {
       id: "L-9",
       name: "Jordan Vale",
       businessType: "Digital agency",
+      sourceStage: "Proposal",
+      status: "New",
       lastContactDate: "2026-07-10",
       followUpCount: 3,
       quotedPrice: 1250,
@@ -58,15 +64,20 @@ describe("CSV normalization", () => {
     expect(result.errors[0].message).toContain("Lead name is required");
   });
 
-  it("ships a valid 14-row fictional sample CSV", () => {
+  it("ships a valid 14-row fictional sample CSV with source stages separated", () => {
     const sample = readFileSync(new URL("../public/sample-leads.csv", import.meta.url), "utf8");
     const result = parseLeadCsv(sample);
     expect(result.errors).toEqual([]);
     expect(result.leads).toHaveLength(14);
     expect(result.validRows).toHaveLength(14);
+    expect(result.leads.find((lead) => lead.id === "CSV-DEMO-004")).toMatchObject({
+      sourceStage: "Proposal",
+      status: "New",
+    });
     expect(result.leads.find((lead) => lead.id === "CSV-DEMO-006")).toMatchObject({
       serviceInterest: "",
       source: "Website",
+      sourceStage: "New",
       status: "New",
     });
   });

@@ -10,6 +10,7 @@ export interface Lead {
   email?: string;
   serviceInterest: string;
   source: string;
+  sourceStage?: string;
   status: string;
   enquiryText: string;
   lastContactDate?: string;

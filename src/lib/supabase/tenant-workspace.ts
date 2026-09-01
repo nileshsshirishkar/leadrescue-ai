@@ -14,6 +14,12 @@ const contactSchema = z
   })
   .strict();
 
+const sourceMetadataSchema = z
+  .object({
+    source_stage: z.string().optional(),
+  })
+  .passthrough();
+
 const workspaceLeadRowSchema = z
   .object({
     id: z.string().uuid(),
@@ -21,6 +27,7 @@ const workspaceLeadRowSchema = z
     business_type: z.string(),
     service_interest: z.string(),
     source: z.string(),
+    source_metadata: sourceMetadataSchema.optional().default({}),
     status: z.string(),
     enquiry_text: z.string(),
     last_contact_at: z.string().nullable(),
@@ -54,7 +61,7 @@ async function createDefaultDependencies(): Promise<TenantWorkspaceReadDependenc
       const { data, error } = await supabase
         .from("leads")
         .select(
-          "id, organization_id, business_type, service_interest, source, status, enquiry_text, last_contact_at, follow_up_count, appointment_status, quoted_price, budget_signal, notes, contact:contacts!leads_contact_same_org_fk(full_name, phone_raw, phone_e164, email)",
+          "id, organization_id, business_type, service_interest, source, source_metadata, status, enquiry_text, last_contact_at, follow_up_count, appointment_status, quoted_price, budget_signal, notes, contact:contacts!leads_contact_same_org_fk(full_name, phone_raw, phone_e164, email)",
         )
         .eq("organization_id", organizationId)
         .order("created_at", { ascending: false })
@@ -68,6 +75,7 @@ async function createDefaultDependencies(): Promise<TenantWorkspaceReadDependenc
 
 function toLead(row: z.infer<typeof workspaceLeadRowSchema>): Lead {
   const phone = row.contact.phone_e164 ?? row.contact.phone_raw ?? undefined;
+  const sourceStage = row.source_metadata.source_stage?.trim() || undefined;
 
   return {
     id: row.id,
@@ -77,6 +85,7 @@ function toLead(row: z.infer<typeof workspaceLeadRowSchema>): Lead {
     ...(row.contact.email ? { email: row.contact.email } : {}),
     serviceInterest: row.service_interest,
     source: row.source,
+    ...(sourceStage ? { sourceStage } : {}),
     status: row.status,
     enquiryText: row.enquiry_text,
     ...(row.last_contact_at ? { lastContactDate: row.last_contact_at } : {}),

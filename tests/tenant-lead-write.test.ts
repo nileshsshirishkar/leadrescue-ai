@@ -53,12 +53,36 @@ describe("persistTenantLead", () => {
       source: "manual_csv",
       sourceExternalId: "qa-app-write-001",
       status: "New",
+      sourceStage: "",
       followUpCount: 0,
       phoneRaw: null,
       phoneE164: null,
       email: null,
       quotedPrice: null,
     });
+  });
+
+  it("preserves external stage separately from authoritative New status", async () => {
+    let persistedInput: unknown;
+
+    const result = await persistTenantLead(
+      { ...validInput, sourceStage: "Proposal" },
+      createDependencies({
+        persistLead: async (input) => {
+          persistedInput = input;
+          return [{ result: "created", lead_id: leadId }];
+        },
+      }),
+    );
+
+    expect(result).toEqual({ status: "created", leadId });
+    expect(persistedInput).toMatchObject({ status: "New", sourceStage: "Proposal" });
+  });
+
+  it("rejects non-New authoritative status at lead creation", async () => {
+    await expect(
+      persistTenantLead({ ...validInput, status: "Proposal" }, createDependencies()),
+    ).resolves.toEqual({ status: "invalid" });
   });
 
   it("returns existing for an idempotent retry", async () => {
