@@ -7,7 +7,7 @@ create table public.provider_connections (
   metadata jsonb not null default '{}'::jsonb check (jsonb_typeof(metadata) = 'object'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint provider_connections_org_id_unique unique (organization_id, id),
+  constraint provider_connections_org_id_provider_unique unique (organization_id, id, provider),
   constraint provider_connections_provider_external_unique unique (provider, external_account_id)
 );
 
@@ -29,12 +29,12 @@ create table public.provider_lead_receipts (
   metadata jsonb not null default '{}'::jsonb check (jsonb_typeof(metadata) = 'object'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint provider_lead_receipts_connection_same_org_fk
-    foreign key (organization_id, provider_connection_id)
-    references public.provider_connections (organization_id, id) on delete cascade,
+  constraint provider_lead_receipts_connection_same_org_provider_fk
+    foreign key (organization_id, provider_connection_id, provider)
+    references public.provider_connections (organization_id, id, provider) on delete cascade,
   constraint provider_lead_receipts_lead_same_org_fk
     foreign key (organization_id, lead_id)
-    references public.leads (organization_id, id) on delete set null,
+    references public.leads (organization_id, id) on delete set null (lead_id),
   constraint provider_lead_receipts_org_provider_lead_unique
     unique (organization_id, provider, provider_lead_id)
 );
@@ -61,13 +61,10 @@ for each row execute function private.prevent_organization_id_change();
 alter table public.provider_connections enable row level security;
 alter table public.provider_lead_receipts enable row level security;
 
-revoke all on table public.provider_connections from public, anon, authenticated;
-revoke all on table public.provider_lead_receipts from public, anon, authenticated;
+revoke all on table public.provider_connections from public, anon, authenticated, service_role;
+revoke all on table public.provider_lead_receipts from public, anon, authenticated, service_role;
 
-grant all on table public.provider_connections to service_role;
-grant all on table public.provider_lead_receipts to service_role;
-
-create or replace function public.record_meta_lead_webhook_receipt(
+create or replace function private.record_meta_lead_webhook_receipt(
   p_page_id text,
   p_leadgen_id text,
   p_form_id text,
@@ -99,7 +96,8 @@ begin
     and pc.external_account_id = p_page_id
     and pc.status = 'active'
     and o.access_status = 'active'
-  limit 1;
+  limit 1
+  for share of pc, o;
 
   if v_connection_id is null then
     raise exception using errcode = '42501', message = 'No active Meta tenant mapping';
@@ -150,6 +148,31 @@ begin
 
   return query select 'created'::text, v_receipt_id, v_organization_id;
 end;
+$$;
+
+revoke execute on function private.record_meta_lead_webhook_receipt(text, text, text, timestamptz) from public;
+revoke execute on function private.record_meta_lead_webhook_receipt(text, text, text, timestamptz) from anon;
+revoke execute on function private.record_meta_lead_webhook_receipt(text, text, text, timestamptz) from authenticated;
+grant execute on function private.record_meta_lead_webhook_receipt(text, text, text, timestamptz) to service_role;
+
+create or replace function public.record_meta_lead_webhook_receipt(
+  p_page_id text,
+  p_leadgen_id text,
+  p_form_id text,
+  p_provider_created_at timestamptz
+)
+returns table(result text, receipt_id uuid, organization_id uuid)
+language sql
+security invoker
+set search_path = ''
+as $$
+  select *
+  from private.record_meta_lead_webhook_receipt(
+    p_page_id,
+    p_leadgen_id,
+    p_form_id,
+    p_provider_created_at
+  );
 $$;
 
 revoke execute on function public.record_meta_lead_webhook_receipt(text, text, text, timestamptz) from public;
