@@ -47,17 +47,23 @@ values
     'Other tenant notes'
   );
 
-select extensions.results_eq(
-  $$
-    select n.nspname::text, p.prosecdef
+select extensions.ok(
+  (
+    select count(*) = 1 and bool_and(p.prosecdef)
     from pg_catalog.pg_proc p
     join pg_catalog.pg_namespace n on n.oid = p.pronamespace
     where p.proname = 'record_meta_lead_webhook_receipt'
       and p.pronargs = 4
-      and n.nspname in ('private', 'public')
-    order by n.nspname
-  $$,
-  $$values ('private'::text, true), ('public'::text, false)$$,
+      and n.nspname = 'private'
+  )
+  and (
+    select count(*) = 1 and bool_and(not p.prosecdef)
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+    where p.proname = 'record_meta_lead_webhook_receipt'
+      and p.pronargs = 4
+      and n.nspname = 'public'
+  ),
   'Only the private implementation is SECURITY DEFINER'
 );
 
