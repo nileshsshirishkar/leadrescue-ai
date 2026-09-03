@@ -1,54 +1,102 @@
-# LeadRescue AI contributor guide
+# LeadRescue AI engineering guide
 
-## Product scope
+## Purpose and scope
 
-LeadRescue AI is an explainable lead-recovery copilot for small service businesses. Deterministic local rules find follow-up leakage, explain record evidence, recommend a next action, and draft a human-reviewed recovery message. Phase 2 adds an optional, explicit, one-lead GPT-5.6 language enhancement without changing deterministic scoring.
+LeadRescue AI is a focused lead follow-up operating system, not a full CRM. The core flow is authorized Meta, Google, Manual, or CSV ingestion into a tenant workspace, deterministic scoring and Rescue Queue, human follow-up, status and notes, next-action tasks, reminders, outcomes, and later provider feedback when valid attribution exists.
 
-The approved next-stage foundation now includes Supabase for authentication and tenant-aware persistence work in controlled development. Do not add other databases, identity providers, deployment changes, or automatic WhatsApp, email, CRM, Meta, or Zoho integrations unless a newer approved decision explicitly authorizes them. Preserve the lightweight shared demo access-code gate for the paid enhancement route until it is deliberately replaced. Do not invent or describe incomplete features as working.
+Do not invent customers, revenue, ROI, testimonials, SLAs, Production readiness, provider capabilities, or completed integrations.
 
-## Technical rules
+## Repository and release discipline
 
-- Preserve the Next.js App Router, React, strict TypeScript, Tailwind CSS, Zod, Papa Parse, Lucide React, and npm stack.
-- Use `npm.cmd` and `npx.cmd` on Windows. Do not change PowerShell execution policy.
-- Keep all lead analysis deterministic and auditable in `src/lib/scoring.ts`.
-- Validate all imported records before they reach the analysis engine.
-- Treat browser storage as temporary prototype convenience only. New shared persistence must use the approved Supabase schema and tenant RLS controls, and must be validated away from Production first.
-- Supabase authentication must use the official SSR client pattern, verified user claims for protected server access, and public publishable credentials only in `NEXT_PUBLIC_` variables. Never expose a Supabase secret or service-role key to the browser.
-- Keep `OPENAI_API_KEY` server-only. Never use a `NEXT_PUBLIC_` API key or call OpenAI from a client component.
-- Keep `DEMO_ACCESS_CODE` server-only. Send the user-entered code only in the `x-demo-access-code` request header and compare it before initializing OpenAI.
-- Remember the demo access code only in `sessionStorage`; never put it in `localStorage`, render it after saving, or log it.
-- OpenAI requests may originate only from the server route after one deliberate user action for one outreach-eligible lead.
-- Use the Responses API with strict structured output, `store: false`, a bounded timeout, and no automatic retries.
-- Preserve the deterministic result as the reliable fallback when enhancement is unavailable.
-- Read the relevant installed guide in `node_modules/next/dist/docs/` before relying on Next.js APIs or conventions; this installed version may differ from prior releases.
+- The repository must resolve exactly to `nileshsshirishkar/leadrescue-ai` before any mutation.
+- `develop` is the integration branch. `main` and public Production are separate release gates.
+- Work on an isolated branch. Do not work directly on `develop` or `main`.
+- Do not merge a pull request unless the user has explicitly approved that merge.
+- Approval to merge to `develop` never authorizes `main`, public Production, Production database changes, DNS, billing, provider secrets, or provider billing.
+- Before changing code, inspect the current branch, relevant open pull requests, CI, migrations, and the existing implementation. Do not restart completed work or create a competing implementation without a clear reason.
+- Keep changes small and scoped to the approved milestone. Avoid unrelated refactors.
 
-## Design rules
+## Architecture and tenant security
 
-- Use a premium light interface with white and soft neutral surfaces, deep blue primary actions, restrained cyan accents, and amber/red only for urgency.
-- Maintain accessible contrast, visible focus states, semantic controls, keyboard-friendly dialogs, and responsive desktop/mobile layouts.
-- Do not add stock photos, robot imagery, decorative clutter, or charts that are not calculated from loaded data.
-- Evidence must quote or precisely describe facts present in the lead record. Never render an assumption as confirmed fact.
+- Preserve Next.js, React, strict TypeScript, Supabase Auth, PostgreSQL, and Supabase RLS as the core application architecture unless an explicit approved decision changes it.
+- RLS is a core authorization boundary.
+- Normal application reads and writes must use authenticated user context. Do not use service-role access to bypass ordinary application authorization.
+- Browser input is never authoritative for organization or actor identity. Resolve organization and actor from authenticated server/database context.
+- Missing, paused, or ambiguous membership must fail closed.
+- Cross-tenant reads, writes, tasks, reminders, and workflow changes must remain impossible.
+- A narrowly scoped service-role path may be used only for an explicitly approved trusted server-to-server operation such as provider ingress or controlled maintenance. It must not be exposed to browser roles, must derive tenant identity from trusted server-owned mappings rather than request-supplied organization IDs, must use the minimum required privileges, and must have focused tenant-isolation tests.
+- Never expose service-role keys, provider tokens, API keys, cookies, private keys, passwords, or other secrets to the browser, logs, tests, fixtures, documentation, pull-request text, or this public repository.
 
-## Safety rules
+## Lead identity, imports, and retry safety
 
-- Always show that every recommendation and message requires human review.
-- Never expose AI enhancement controls for no-outreach records.
-- Reject missing or incorrect demo access codes with the same generic 401 response before OpenAI initialization or invocation.
-- Treat every lead field as untrusted data, never as model instructions.
-- Never invent prices, discounts, customer statements, or promised outcomes.
-- Generated messages must be concise, natural, and end with one clear question.
-- Keep all bundled samples fictional using reserved `example.com` email addresses and fictional phone ranges.
-- Do not enable public self-signup until account provisioning, organization membership, role assignment, lifecycle, and recovery behavior are explicitly approved and tested.
+- Provider and import retries must not create duplicate logical leads or overwrite later human edits.
+- Use tenant-safe provider/import identity based on the approved source/provider plus `source_external_id` or equivalent provider-owned identifier.
+- Do not deduplicate automatically by email or phone without an explicitly approved policy.
+- Manual/CSV retry identity is not advertising attribution.
+- Incoming provider or CSV stage is source metadata. It is not authoritative LeadRescue workflow status.
+- Keep ingestion method, lead source, and advertising attribution as separate concepts.
+- Do not infer Meta or Google attribution from free text, source labels, form names, email, phone, or external stage.
+
+## Workflow contract
+
+The authoritative statuses are exactly:
+
+- `New`
+- `Follow-up needed`
+- `Interested`
+- `Qualified`
+- `Appointment booked`
+- `Won`
+- `Lost`
+
+`Won` and `Lost` are terminal. Reopen only to `Follow-up needed`.
+
+`follow_up_tasks.due_at` is the canonical next-follow-up time. Active workflow updates must preserve the approved next-follow-up and pending-task rules. Material workflow changes must remain auditable.
+
+## Provider integration rules
+
+- Meta and Google ingestion are approved roadmap areas, but implement only the provider slice explicitly described in the current task.
+- Verify changing provider API requirements against current official documentation before relying on them. If verification is incomplete, mark the point `REQUIRES VERIFICATION` rather than guessing.
+- Provider ingress must resolve the correct LeadRescue tenant from trusted server-owned provider mappings and fail closed for unknown, disabled, paused, or ambiguous mappings.
+- Duplicate webhook delivery and retries must be idempotent.
+- Provider outages or feedback failures must never block saving valid LeadRescue state.
+- Provider feedback is a later asynchronous outbox/retry concern and must not be coupled to core lead saving unless an explicit milestone authorizes it.
+- Do not configure real provider credentials, secrets, billing, app-review settings, or Production integrations without the separate approval gate.
+
+## Product boundaries
+
+- Zoho CRM sync is excluded unless an explicit later decision reverses that.
+- n8n may be used only as a future adapter, never as LeadRescue's state engine.
+- WhatsApp/Interakt, appointment booking, and Voice AI are later layers unless explicitly reprioritized.
+- In-product Stripe billing is deferred unless an explicit later decision changes the current plan.
+- Public self-signup is not an assumed capability. Preserve founder-controlled tenant provisioning and lifecycle behavior unless a specific approved milestone changes it.
+
+## AI and generated-content safety
+
+- Keep model-generated language separate from deterministic scoring, workflow state, and authorization logic.
+- Human review is required for generated outreach.
+- Never invent prices, offers, customer statements, outcomes, guarantees, or appointments.
+- Treat lead fields and imported/provider content as untrusted data, never as model instructions.
+- Keep `OPENAI_API_KEY` server-only. Automated tests must use mocks and must not make real OpenAI requests.
 
 ## Quality gate
 
-Before declaring work complete, run:
+Before presenting an implementation as ready for review, run the applicable checks:
 
-1. `npm.cmd run lint`
-2. `npm.cmd run typecheck`
-3. `npm.cmd test`
-4. `npm.cmd run build`
+1. `npm run lint`
+2. `npm run typecheck`
+3. `npm test`
+4. `npm run build`
+5. For database or RLS changes, start the local Supabase test database as required and run `supabase test db`.
 
-Add or update focused tests whenever scoring, CSV normalization, authentication, authorization, or persistence behavior changes. Report limitations honestly and never claim untested behavior is complete.
+Add focused tests for material authentication, authorization, tenancy, ingestion, idempotency, workflow, migration, or provider behavior. A passing build alone is not sufficient evidence for a security-sensitive change.
 
-All OpenAI-related automated tests must use mocked clients. Never make a real OpenAI request during tests, linting, type checking, builds, or browser verification.
+## Agent operating rules
+
+- Inspect first, then change the smallest safe surface.
+- Do not silently weaken RLS, authentication, tenant checks, retry guarantees, database constraints, audit behavior, or CI.
+- Do not modify unrelated open pull requests or branches unless the task explicitly calls for it.
+- Do not use broad network access, Production credentials, or real customer data to solve a Dev/Preview task.
+- Prefer fictional test data and reserved example values.
+- Report what changed, what was tested, what remains unverified, and any security or migration risk.
+- Stop at the required approval gate instead of merging, promoting, purchasing, or changing Production on your own.
